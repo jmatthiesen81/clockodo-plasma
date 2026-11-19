@@ -45,6 +45,8 @@ class FakeClient:
         self.start_delay = 0.0
         self.apply_before_error = False  # lost response: the action happened anyway
         self.intervals: list[Interval] = []
+        self.target: int | None = None  # daily target in seconds
+        self.target_error: Exception | None = None
 
     async def aclose(self) -> None:
         pass
@@ -63,6 +65,12 @@ class FakeClient:
         if self.running:
             intervals.append(Interval(self.running.time_since, None))
         return intervals
+
+    async def get_day_target(self, users_id: int, day: date) -> int | None:
+        self.calls.append(("get_day_target", day))
+        if self.target_error:
+            raise self.target_error
+        return self.target
 
     async def start_clock(self, context: Context) -> ClockStatus:
         self.calls.append(("start", context))
@@ -136,9 +144,19 @@ class FakeSecrets:
 class FakeNotifier:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
+        self.actions: list[list[tuple[str, str]]] = []
+        self.callbacks: list[Any] = []
 
-    async def notify(self, summary: str, body: str = "") -> None:
+    async def notify(
+        self,
+        summary: str,
+        body: str = "",
+        actions: Any = (),
+        on_action: Any = None,
+    ) -> None:
         self.sent.append((summary, body))
+        self.actions.append(list(actions))
+        self.callbacks.append(on_action)
 
 
 class FakeTime:

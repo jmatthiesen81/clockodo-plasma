@@ -50,7 +50,7 @@ sudo pacman -U dist/clockodo-plasma-*-any.pkg.tar.zst
 2. Auf das Widget klicken. Der Daemon startet automatisch über die D-Bus-Aktivierung.
 3. Clockodo-E-Mail und API-Schlüssel eingeben und *Prüfen und speichern* drücken. Der Daemon prüft sie bei Clockodo und legt sie in KWallet ab. Der Schlüssel gewährt denselben Zugriff wie das Passwort.
 4. Kunde, optional Projekt, und Leistung wählen, dann *Starten*.
-5. Optional: die Einstellungen (Zahnradsymbol) für Sprache, Intervall, Erinnerungen und Kontakt-E-Mail öffnen.
+5. Optional: die Konfiguration öffnen (Rechtsklick → *Clockodo-Zeiterfassung einrichten …*, oder das Zahnradsymbol) und eine Standardbuchung festlegen; danach starten und stoppen Strg + Linksklick oder ein Mittelklick die Uhr direkt.
 
 Zeigt das Popup „Brieftasche gesperrt“, *Entsperren* drücken. Ist der Secret Service gar nicht verfügbar, siehe [Fehlerbehebung](troubleshooting.md#secret-service-nicht-verfügbar).
 

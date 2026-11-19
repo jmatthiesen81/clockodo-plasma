@@ -12,19 +12,22 @@ Clockodo offers desktop apps only for Windows and macOS. This project brings the
 
 Clockodo stays the only source of truth. There is no local database and no offline booking; the widget never books anything without a click. The most important quality goal is **no wrong bookings** (see [Architecture – Booking safety](architecture.md#booking-safety)).
 
-## Features (0.1.0)
+## Features
 
-| Feature          | Behavior                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| Panel            | Play/pause symbol and today's total `HH:MM`; dimmed and italic when the data is stale             |
-| Popup            | Status, total, running context, start/stop/switch, refresh, settings                              |
-| Booking context  | Customer › project (optional) › service, five recently used contexts, optional description        |
-| Synchronisation  | Interval off/30 s/1/2/5 min (default 1 min), immediately when the popup opens, back-off on errors |
-| External changes | Starts/stops on other devices are detected and shown as a notice                                  |
-| Credentials      | E-mail and API key in the Secret Service (KWallet), checked against Clockodo before saving        |
-| Reminders        | Screen locked while running; after resume from suspend; optionally after N hours                  |
-| Languages        | English and German, chosen in the settings (default: system language, otherwise English)          |
-| Distribution     | Arch package (`arch=any`) from an own pacman repository; GitHub releases carry the source         |
+| Feature          | Behavior                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Panel            | Today's total `HH:MM` as ring (progress to the daily target), stopwatch or pill; green running, orange stopped, red over target; dimmed and italic when stale |
+| Popup            | Status, total and target, running context, quick start, start/stop/switch, recently used contexts                                                             |
+| Quick start/stop | Key + left click (default Ctrl), middle click or context menu; starts the default booking or stops the shown entry                                            |
+| Context menu     | Quick start/stop, start/switch with selection, switch to the default booking, recently used contexts                                                          |
+| Daily target     | From Clockodo's target hours; red and an optional warning with a *Stop* button when exceeded                                                                  |
+| Booking context  | Customer › project (optional) › service, five recently used contexts, optional description                                                                    |
+| Synchronisation  | Interval off/30 s/1/2/5 min (default 1 min), immediately when the popup opens, back-off on errors                                                             |
+| External changes | Starts/stops on other devices are detected and shown as a notice                                                                                              |
+| Credentials      | E-mail and API key in the Secret Service (KWallet), checked against Clockodo before saving                                                                    |
+| Reminders        | Screen locked while running; after resume from suspend; optionally after N hours                                                                              |
+| Languages        | English and German, chosen in the settings (default: system language, otherwise English)                                                                      |
+| Distribution     | Arch package (`arch=any`) from an own pacman repository; GitHub releases carry the source                                                                     |
 
 ## Architecture at a glance
 

@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
+import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
@@ -10,8 +11,8 @@ PlasmaExtras.Representation {
     id: full
 
     Layout.minimumWidth: Kirigami.Units.gridUnit * 20
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 24
-    Layout.minimumHeight: Kirigami.Units.gridUnit * 16
+    Layout.preferredWidth: Kirigami.Units.gridUnit * 22
+    Layout.minimumHeight: Kirigami.Units.gridUnit * 12
     // The header is not part of the content and must be added; the views
     // scroll if they are taller than the cap.
     Layout.preferredHeight: Math.min(
@@ -20,33 +21,54 @@ PlasmaExtras.Representation {
 
     collapseMarginsHint: true
 
-    property bool showSettings: false
-    property bool switching: false
-    property string actionMessage: ""
-    property bool actionOk: true
+    // "main": status with quick start / stop; "picker": start or switch with selection.
+    property string mode: "main"
 
-    // Booking contexts from the daemon (ListContexts).
+    // Booking contexts from the daemon (ListContexts), for the picker.
     property var contexts: null
     property string contextsError: ""
     property var selected: null // {customers_id, projects_id, services_id}
     property string description: ""
+    property bool rememberDefault: false
 
     readonly property bool needsCredentials: root.status === "unconfigured"
         || root.status === "auth_failed"
+    readonly property bool switching: root.running
+
+    readonly property string modifierName: {
+        switch (root.ui.modifier) {
+        case "shift": return root.tr("Shift");
+        case "alt": return root.tr("Alt");
+        case "meta": return root.tr("Meta");
+        default: return root.tr("Ctrl");
+        }
+    }
+    readonly property string quickHint: (root.ui.modifier_click || "quick") === "quick"
+        ? root.tr("%1+click", modifierName) : ""
 
     function loadContexts() {
         root.call("ListContexts", [], value => {
             if (value && value.ok) {
                 contexts = value;
                 contextsError = "";
-                if (!selected && value.recent.length > 0) {
-                    // Only pre-filled; never started without an explicit click.
-                    selected = value.recent[0];
-                }
             } else {
                 contextsError = value ? value.message : "";
             }
         }, message => contextsError = message);
+    }
+
+    function openPicker() {
+        // Only pre-filled; nothing starts without an explicit click.
+        if (root.quickValid) {
+            selected = root.contextData(root.quick);
+        } else if (root.recentChoices.length > 0) {
+            selected = root.contextData(root.recentChoices[0]);
+        } else {
+            selected = null;
+        }
+        rememberDefault = false;
+        mode = "picker";
+        loadContexts();
     }
 
     function nameOf(list, id) {
@@ -69,78 +91,79 @@ PlasmaExtras.Representation {
         return parts.join(" › ");
     }
 
-    function showResult(result) {
-        actionOk = !!(result && result.ok);
-        actionMessage = result && result.message ? result.message : "";
-    }
+    readonly property bool selectionComplete: !!selected && !!selected.customers_id && !!selected.services_id
 
-    function startClock() {
-        if (!selected || !selected.customers_id || !selected.services_id) {
+    function startSelected() {
+        if (!selectionComplete) {
             return;
         }
-        const ctx = {
-            "customers_id": selected.customers_id,
-            "projects_id": selected.projects_id || null,
-            "services_id": selected.services_id,
-            "text": description.trim() || null
+        const ctx = root.contextData(selected, description.trim());
+        const remember = rememberDefault;
+        root.actionMessage = "";
+        const done = result => {
+            root.showResult(result, false);
+            if (result && result.ok) {
+                description = "";
+                mode = "main";
+                if (remember) {
+                    root.call("SetSettings", [JSON.stringify({
+                        "default_customers_id": ctx.customers_id,
+                        "default_projects_id": ctx.projects_id || 0,
+                        "default_services_id": ctx.services_id
+                    })]);
+                }
+            }
         };
-        actionMessage = "";
+        const failed = message => root.showError(message, false);
         if (switching && root.daemonState.running) {
-            root.call("Switch", [JSON.stringify(ctx), root.daemonState.running.entry_id], result => {
-                showResult(result);
-                if (result && result.ok) {
-                    switching = false;
-                    description = "";
-                }
-            }, message => showResult({ "ok": false, "message": message }));
+            root.call("Switch", [JSON.stringify(ctx), root.daemonState.running.entry_id], done, failed);
         } else {
-            root.call("Start", [JSON.stringify(ctx)], result => {
-                showResult(result);
-                if (result && result.ok) {
-                    description = "";
-                }
-            }, message => showResult({ "ok": false, "message": message }));
+            root.call("Start", [JSON.stringify(ctx)], done, failed);
         }
     }
 
-    function stopClock() {
-        if (!root.daemonState.running) {
-            return;
-        }
-        actionMessage = "";
-        root.call("Stop", [root.daemonState.running.entry_id], showResult,
-                  message => showResult({ "ok": false, "message": message }));
+    function openSettings() {
+        Plasmoid.internalAction("configure").trigger();
     }
 
     Connections {
         target: root
         function onExpandedChanged() {
             if (root.expanded) {
-                full.actionMessage = "";
-                if (root.hasData) {
-                    full.loadContexts();
+                if (full.mode !== "picker") {
+                    root.actionMessage = "";
                 }
             } else {
-                full.switching = false;
-                full.showSettings = false;
+                full.mode = "main";
+                full.description = "";
             }
         }
-        function onStatusChanged() {
-            if (root.hasData && !full.contexts) {
-                full.loadContexts();
-            }
+        function onPickerRequestChanged() {
+            full.openPicker();
         }
     }
+
+    Component.onCompleted: if (root.pickerRequest > 0 && root.expanded) full.openPicker()
 
     header: PlasmaExtras.PlasmoidHeading {
         RowLayout {
             anchors.fill: parent
             spacing: Kirigami.Units.smallSpacing
 
+            PlasmaComponents3.ToolButton {
+                visible: full.mode === "picker"
+                icon.name: "go-previous"
+                onClicked: full.mode = "main"
+                QQC2.ToolTip.text: root.tr("Back")
+                QQC2.ToolTip.visible: hovered
+                Accessible.name: root.tr("Back")
+            }
             Kirigami.Heading {
                 Layout.fillWidth: true
                 level: 3
-                text: full.showSettings ? root.tr("Settings") : root.tr("Clockodo")
+                text: full.mode === "picker"
+                    ? (full.switching ? root.tr("Switch with selection") : root.tr("Start with selection"))
+                    : root.tr("Clockodo")
                 elide: Text.ElideRight
             }
             PlasmaComponents3.ToolButton {
@@ -148,7 +171,7 @@ PlasmaExtras.Representation {
                 enabled: !root.daemonState.syncing
                 onClicked: {
                     root.refresh();
-                    if (root.hasData) {
+                    if (full.mode === "picker") {
                         full.loadContexts();
                     }
                 }
@@ -157,13 +180,11 @@ PlasmaExtras.Representation {
                 Accessible.name: root.tr("Refresh")
             }
             PlasmaComponents3.ToolButton {
-                icon.name: full.showSettings ? "go-previous" : "configure"
-                checkable: true
-                checked: full.showSettings
-                onToggled: full.showSettings = checked
-                QQC2.ToolTip.text: full.showSettings ? root.tr("Back") : root.tr("Settings")
+                icon.name: "configure"
+                onClicked: full.openSettings()
+                QQC2.ToolTip.text: root.tr("Settings")
                 QQC2.ToolTip.visible: hovered
-                Accessible.name: full.showSettings ? root.tr("Back") : root.tr("Settings")
+                Accessible.name: root.tr("Settings")
             }
         }
     }
@@ -193,11 +214,11 @@ PlasmaExtras.Representation {
 
         Kirigami.InlineMessage {
             Layout.fillWidth: true
-            visible: full.actionMessage.length > 0
-            type: full.actionOk ? Kirigami.MessageType.Positive : Kirigami.MessageType.Warning
-            text: full.actionMessage
+            visible: root.actionMessage.length > 0
+            type: root.actionOk ? Kirigami.MessageType.Positive : Kirigami.MessageType.Warning
+            text: root.actionMessage
             showCloseButton: true
-            onVisibleChanged: if (!visible) full.actionMessage = ""
+            onVisibleChanged: if (!visible) root.actionMessage = ""
         }
 
         Kirigami.InlineMessage {
@@ -237,9 +258,6 @@ PlasmaExtras.Representation {
                 width: viewScroll.availableWidth
                 height: Math.max(implicitHeight, viewScroll.availableHeight)
                 sourceComponent: {
-                    if (full.showSettings) {
-                        return settingsView;
-                    }
                     if (full.needsCredentials) {
                         return credentialsView;
                     }
@@ -249,58 +267,107 @@ PlasmaExtras.Representation {
                     if (!root.hasData) {
                         return loadingView;
                     }
-                    return trackingView;
+                    return full.mode === "picker" ? pickerView : mainView;
                 }
             }
         }
     }
 
-    // ==================================================================== tracking
+    // ==================================================================== main
 
     Component {
-        id: trackingView
+        id: mainView
 
         ColumnLayout {
             spacing: Kirigami.Units.largeSpacing
 
+            // ------------------------------------------------ status
             RowLayout {
                 Layout.fillWidth: true
-                Kirigami.Icon {
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                    source: root.running ? "media-playback-pause" : "media-playback-start"
+                spacing: Kirigami.Units.largeSpacing
+
+                StatusIcon {
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
+                    style: root.panelStyle === "stopwatch" ? "stopwatch" : "ring"
+                    color: root.stateColor
+                    running: root.running
+                    progress: root.progress
+                    pulse: true
                 }
+
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 0
-                    PlasmaComponents3.Label {
-                        text: root.running ? root.tr("Clock is running") : root.tr("Clock is stopped")
-                        font.bold: true
+                    spacing: Kirigami.Units.smallSpacing / 2
+
+                    Rectangle {
+                        implicitWidth: stateLabel.implicitWidth + Kirigami.Units.largeSpacing
+                        implicitHeight: stateLabel.implicitHeight + Kirigami.Units.smallSpacing / 2
+                        radius: height / 2
+                        color: Qt.rgba(root.stateColor.r, root.stateColor.g, root.stateColor.b, 0.16)
+
+                        PlasmaComponents3.Label {
+                            id: stateLabel
+                            anchors.centerIn: parent
+                            text: root.overtime ? root.tr("Over target")
+                                : root.running ? root.tr("Running") : root.tr("Stopped")
+                            color: root.stateColor
+                            font.bold: true
+                            font.capitalization: Font.AllUppercase
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        }
                     }
                     PlasmaComponents3.Label {
                         Layout.fillWidth: true
-                        visible: root.running && !!root.daemonState.running
-                        text: root.daemonState.running
-                            ? root.tr("%1 – since %2", root.daemonState.running.label,
-                                   root.formatTime(root.daemonState.running.time_since))
-                            : ""
+                        visible: text.length > 0
+                        text: {
+                            if (root.running && root.daemonState.running) {
+                                const since = Date.parse(root.daemonState.running.time_since);
+                                const seconds = Math.max(0, Math.floor((root.nowMs - since) / 1000));
+                                return root.tr("since %1 · %2 h", root.sinceText, root.formatDuration(seconds));
+                            }
+                            return "";
+                        }
+                        opacity: 0.7
                         wrapMode: Text.Wrap
                     }
                 }
+
                 ColumnLayout {
                     spacing: 0
                     PlasmaComponents3.Label {
                         Layout.alignment: Qt.AlignRight
                         text: root.totalText
-                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6
+                        color: root.stateColor
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
+                        font.weight: Font.DemiBold
                         font.features: ({ "tnum": 1 })
                         Accessible.name: root.tr("Work time today: %1", root.totalText)
                     }
                     PlasmaComponents3.Label {
                         Layout.alignment: Qt.AlignRight
-                        text: root.tr("today")
+                        text: root.targetSeconds > 0
+                            ? root.tr("today · target %1", root.formatDuration(root.targetSeconds))
+                            : root.tr("today")
                         opacity: 0.7
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
                     }
+                }
+            }
+
+            // Progress towards the daily target.
+            Rectangle {
+                Layout.fillWidth: true
+                visible: root.targetSeconds > 0
+                implicitHeight: Math.round(Kirigami.Units.smallSpacing * 1.5)
+                radius: height / 2
+                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+
+                Rectangle {
+                    width: parent.width * Math.min(1, Math.max(0, root.progress))
+                    height: parent.height
+                    radius: parent.radius
+                    color: root.stateColor
                 }
             }
 
@@ -312,33 +379,217 @@ PlasmaExtras.Representation {
                 wrapMode: Text.Wrap
             }
 
-            // Running: stop or switch.
-            RowLayout {
+            // ------------------------------------------------ stopped: quick start
+            ColumnLayout {
                 Layout.fillWidth: true
-                visible: root.running && !full.switching
+                visible: !root.running
+                spacing: Kirigami.Units.smallSpacing
+
+                SectionLabel { text: root.tr("Default booking") }
+
                 PlasmaComponents3.Button {
                     Layout.fillWidth: true
-                    icon.name: "media-playback-stop"
-                    text: root.tr("Stop")
+                    visible: root.quickValid
                     enabled: !root.busy && !root.stale
-                    onClicked: full.stopClock()
+                    onClicked: root.startContext(root.quick, full.description.trim() || root.quick.text, false)
+                    Accessible.name: root.tr("Quick start: %1", root.quick ? root.quick.label : "")
+
+                    contentItem: RowLayout {
+                        spacing: Kirigami.Units.largeSpacing
+                        Kirigami.Icon {
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                            source: "media-playback-start"
+                            color: Kirigami.Theme.positiveTextColor
+                            isMask: true
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            PlasmaComponents3.Label {
+                                text: root.tr("Quick start")
+                                font.bold: true
+                            }
+                            PlasmaComponents3.Label {
+                                Layout.fillWidth: true
+                                text: root.quick ? (root.quick.label || "") : ""
+                                wrapMode: Text.Wrap
+                                opacity: 0.8
+                            }
+                        }
+                        PlasmaComponents3.Label {
+                            visible: full.quickHint.length > 0
+                            text: full.quickHint
+                            opacity: 0.6
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        }
+                    }
+                }
+
+                PlasmaComponents3.Label {
+                    Layout.fillWidth: true
+                    visible: !root.quickValid
+                    wrapMode: Text.Wrap
+                    opacity: 0.8
+                    text: root.quick
+                        ? root.tr("The default booking is no longer active. Please choose a new one.")
+                        : root.tr("No default booking yet. With one, a click starts the clock right away.")
                 }
                 PlasmaComponents3.Button {
-                    icon.name: "exchange-positions"
-                    text: root.tr("Switch…")
-                    enabled: !root.busy && !root.stale
-                    onClicked: {
-                        full.switching = true;
-                        full.loadContexts();
+                    visible: !root.quickValid
+                    icon.name: "configure"
+                    text: root.tr("Set default booking…")
+                    onClicked: full.openSettings()
+                }
+
+                PlasmaComponents3.TextField {
+                    Layout.fillWidth: true
+                    visible: root.quickValid
+                    placeholderText: root.quick && root.quick.text
+                        ? root.quick.text : root.tr("Description (optional)")
+                    maximumLength: 1000
+                    text: full.description
+                    onTextEdited: full.description = text
+                    onAccepted: if (root.quickValid) root.startContext(root.quick, full.description.trim() || root.quick.text, false)
+                    Accessible.name: root.tr("Description (optional)")
+                }
+            }
+
+            // ------------------------------------------------ running: booked on, stop, switch
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: root.running && !!root.daemonState.running
+                spacing: Kirigami.Units.smallSpacing
+
+                SectionLabel { text: root.tr("Booked on") }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: bookedColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+                    radius: Kirigami.Units.cornerRadius
+                    color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.07)
+
+                    ColumnLayout {
+                        id: bookedColumn
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.largeSpacing
+                        spacing: Kirigami.Units.smallSpacing / 2
+
+                        Repeater {
+                            model: root.daemonState.running ? root.daemonState.running.label.split(" › ") : []
+                            PlasmaComponents3.Label {
+                                required property string modelData
+                                required property int index
+                                Layout.fillWidth: true
+                                text: modelData
+                                font.bold: index === 0
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                        PlasmaComponents3.Label {
+                            Layout.fillWidth: true
+                            visible: !!root.daemonState.running && !!root.daemonState.running.text
+                            text: root.daemonState.running && root.daemonState.running.text
+                                ? "„" + root.daemonState.running.text + "“" : ""
+                            font.italic: true
+                            opacity: 0.8
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents3.Button {
+                        Layout.fillWidth: true
+                        icon.name: "media-playback-stop"
+                        text: root.tr("Stop")
+                        enabled: !root.busy && !root.stale
+                        onClicked: {
+                            root.actionMessage = "";
+                            root.call("Stop", [root.daemonState.running.entry_id],
+                                      result => root.showResult(result, false),
+                                      message => root.showError(message, false));
+                        }
+                    }
+                    PlasmaComponents3.Button {
+                        icon.name: "exchange-positions"
+                        text: root.tr("Switch…")
+                        enabled: !root.busy && !root.stale
+                        onClicked: full.openPicker()
                     }
                 }
             }
 
-            // Stopped (or switching): choose the context explicitly, then start.
-            ContextPicker {
-                id: picker
+            // ------------------------------------------------ shortcuts
+            ColumnLayout {
+                id: shortcuts
                 Layout.fillWidth: true
-                visible: !root.running || full.switching
+                spacing: Kirigami.Units.smallSpacing / 2
+                readonly property var targets: {
+                    let list = [];
+                    if (root.running && root.quickValid && !root.sameContext(root.quick, root.daemonState.running)) {
+                        list.push(root.quick);
+                    }
+                    for (const ctx of root.recentChoices) {
+                        if (!list.some(x => root.sameContext(x, ctx))
+                                && !(!root.running && root.sameContext(ctx, root.quick))) {
+                            list.push(ctx);
+                        }
+                    }
+                    return list;
+                }
+                visible: targets.length > 0
+
+                SectionLabel {
+                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    text: root.running ? root.tr("Switch directly to") : root.tr("Recently used")
+                }
+                Repeater {
+                    model: shortcuts.targets
+                    PlasmaComponents3.ItemDelegate {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        icon.name: root.running ? "exchange-positions" : "media-playback-start"
+                        text: modelData.label || ""
+                        enabled: !root.busy && !root.stale
+                        onClicked: root.running
+                            ? root.switchTo(modelData, undefined, false)
+                            : root.startContext(modelData, full.description.trim() || undefined, false)
+                    }
+                }
+            }
+
+            PlasmaComponents3.Button {
+                Layout.fillWidth: true
+                visible: !root.running
+                icon.name: "view-list-details"
+                text: root.tr("Start with selection…")
+                enabled: !root.busy
+                onClicked: full.openPicker()
+            }
+
+            PlasmaComponents3.BusyIndicator {
+                Layout.alignment: Qt.AlignHCenter
+                visible: root.busy || !!root.daemonState.syncing
+                running: visible
+                implicitHeight: Kirigami.Units.iconSizes.medium
+            }
+
+            Item { Layout.fillHeight: true }
+        }
+    }
+
+    // ==================================================================== picker
+
+    Component {
+        id: pickerView
+
+        ColumnLayout {
+            spacing: Kirigami.Units.largeSpacing
+
+            ContextPicker {
+                Layout.fillWidth: true
                 contexts: full.contexts
                 selected: full.selected
                 onPicked: ctx => full.selected = ctx
@@ -346,52 +597,62 @@ PlasmaExtras.Representation {
 
             PlasmaComponents3.Label {
                 Layout.fillWidth: true
-                visible: picker.visible && full.contextsError.length > 0
+                visible: full.contextsError.length > 0
                 text: full.contextsError
                 wrapMode: Text.Wrap
             }
 
-            PlasmaComponents3.TextField {
-                id: descriptionField
+            ColumnLayout {
                 Layout.fillWidth: true
-                visible: picker.visible
-                placeholderText: root.tr("Description (optional)")
-                maximumLength: 1000
-                text: full.description
-                onTextEdited: full.description = text
+                spacing: Kirigami.Units.smallSpacing
+                PlasmaComponents3.Label {
+                    text: root.tr("Description (optional)")
+                    opacity: 0.8
+                }
+                PlasmaComponents3.TextField {
+                    Layout.fillWidth: true
+                    maximumLength: 1000
+                    text: full.description
+                    onTextEdited: full.description = text
+                    onAccepted: full.startSelected()
+                    Accessible.name: root.tr("Description (optional)")
+                }
             }
 
             // The selected context is shown in full right above the start button.
             Kirigami.Heading {
                 Layout.fillWidth: true
-                visible: picker.visible
                 level: 4
                 wrapMode: Text.Wrap
-                text: full.selected ? root.tr("Book on: %1", full.labelOf(full.selected))
-                                    : root.tr("Please choose customer and service.")
+                text: full.selectionComplete ? root.tr("Book on: %1", full.labelOf(full.selected))
+                                             : root.tr("Please choose customer and service.")
+            }
+
+            PlasmaComponents3.CheckBox {
+                Layout.fillWidth: true
+                text: root.tr("Remember as default booking")
+                checked: full.rememberDefault
+                onToggled: full.rememberDefault = checked
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                visible: picker.visible
                 PlasmaComponents3.Button {
                     Layout.fillWidth: true
-                    icon.name: "media-playback-start"
+                    icon.name: full.switching ? "exchange-positions" : "media-playback-start"
                     text: full.switching ? root.tr("Switch to this") : root.tr("Start")
-                    enabled: !root.busy && !root.stale && !!full.selected
-                        && !!full.selected.customers_id && !!full.selected.services_id
-                    onClicked: full.startClock()
+                    enabled: !root.busy && !root.stale && full.selectionComplete
+                    onClicked: full.startSelected()
                 }
                 PlasmaComponents3.Button {
-                    visible: full.switching
                     text: root.tr("Cancel")
-                    onClicked: full.switching = false
+                    onClicked: full.mode = "main"
                 }
             }
 
             PlasmaComponents3.BusyIndicator {
                 Layout.alignment: Qt.AlignHCenter
-                visible: root.busy || !!root.daemonState.syncing
+                visible: root.busy
                 running: visible
                 implicitHeight: Kirigami.Units.iconSizes.medium
             }
@@ -422,8 +683,8 @@ PlasmaExtras.Representation {
             PlasmaComponents3.Button {
                 icon.name: "unlock"
                 text: root.tr("Unlock")
-                onClicked: root.call("Unlock", [], full.showResult,
-                                     message => full.showResult({ "ok": false, "message": message }))
+                onClicked: root.call("Unlock", [], result => root.showResult(result, false),
+                                     message => root.showError(message, false))
             }
             Item { Layout.fillHeight: true }
         }
@@ -444,12 +705,5 @@ PlasmaExtras.Representation {
             }
             Item { Layout.fillHeight: true }
         }
-    }
-
-    // ==================================================================== settings
-
-    Component {
-        id: settingsView
-        SettingsView {}
     }
 }

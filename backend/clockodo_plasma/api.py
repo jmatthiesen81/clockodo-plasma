@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 BASE_URL = "https://my.clockodo.com/api"
 DEFAULT_TIMEOUT = httpx.Timeout(15.0, connect=10.0)
 PAGE_SIZE = 1000
+USER_REPORT_DAYS = 3  # UserReportType "Day": month → week → day details
 
 
 # --------------------------------------------------------------------------- errors
@@ -369,6 +370,25 @@ class ClockodoClient:
                     continue
                 intervals.append(Interval(since, parse_time(item.get("time_until"))))
         return intervals
+
+    async def get_day_target(self, users_id: int, day: date) -> int | None:
+        """Target work time of ``day`` in seconds, or None if Clockodo has none.
+
+        The day report already accounts for public holidays, absences and
+        changed target hours. It covers the whole year, so the caller fetches
+        it once per day.
+        """
+        data = await self._get(
+            f"/userreports/{int(users_id)}", {"year": day.year, "type": USER_REPORT_DAYS}
+        )
+        wanted = day.isoformat()
+        for month in data["userreport"].get("month_details") or []:
+            for week in month.get("week_details") or []:
+                for item in week.get("day_details") or []:
+                    if item.get("date") == wanted:
+                        target = item.get("target")
+                        return int(target) if target is not None else None
+        return None
 
     async def list_customers(self) -> list[NamedItem]:
         rows = await self._get_all("/v3/customers", {"filter[active]": "true"}, "data")

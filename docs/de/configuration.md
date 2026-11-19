@@ -1,21 +1,51 @@
 # Konfiguration
 
-Alle Einstellungen und gespeicherten Daten, wo sie liegen und was sie steuern. Die Einstellungen gelten global für den Daemon und werden von allen Widget-Instanzen gemeinsam genutzt; sie werden im Popup (Zahnradsymbol) bearbeitet, nicht im Plasma-Konfigurationsdialog.
+Alle Einstellungen und gespeicherten Daten, wo sie liegen und was sie steuern. Die Einstellungen gelten global für den Daemon und werden von allen Widget-Instanzen gemeinsam genutzt; sie werden im Konfigurationsdialog des Widgets bearbeitet und vom Daemon gespeichert.
 
 ## Einstellungsdatei
 
 `~/.config/clockodo-plasma/config.toml` (beachtet `XDG_CONFIG_HOME`), vom Daemon geschrieben ([config.py](../../backend/clockodo_plasma/config.py)):
 
-| Schlüssel            | Standard   | Werte                         | Wirkung                                                                      |
-| -------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
-| `schema_version`     | `1`        | Ganzzahl                      | Version des Dateiformats, für Migrationen                                    |
-| `poll_interval`      | `60`       | `0`, `30`, `60`, `120`, `300` | Sekunden zwischen Synchronisierungen; `0` = kein geplantes Polling           |
-| `contact_email`      | `""`       | E-Mail oder leer              | Kontakt in `X-Clockodo-External-Application`; leer = Clockodo-E-Mail         |
-| `notify_on_lock`     | `true`     | Boolean                       | Benachrichtigung, wenn der Bildschirm gesperrt wird, während die Uhr läuft   |
-| `long_running_hours` | `0`        | `0`–`24`                      | Einmalige Benachrichtigung pro Eintrag nach dieser Anzahl Stunden; `0` = aus |
-| `language`           | `"system"` | `system`, `en`, `de`          | Sprache von Widget, Meldungen und Benachrichtigungen                         |
+| Schlüssel                 | Standard   | Werte                          | Wirkung                                                                                 |
+| ------------------------- | ---------- | ------------------------------ | --------------------------------------------------------------------------------------- |
+| `schema_version`          | `1`        | Ganzzahl                       | Version des Dateiformats, für Migrationen                                               |
+| `poll_interval`           | `60`       | `0`, `30`, `60`, `120`, `300`  | Sekunden zwischen Synchronisierungen; `0` = kein geplantes Polling                      |
+| `contact_email`           | `""`       | E-Mail oder leer               | Kontakt in `X-Clockodo-External-Application`; leer = Clockodo-E-Mail                    |
+| `notify_on_lock`          | `true`     | Boolean                        | Benachrichtigung, wenn der Bildschirm gesperrt wird, während die Uhr läuft              |
+| `long_running_hours`      | `0`        | `0`–`24`                       | Einmalige Benachrichtigung pro Eintrag nach dieser Anzahl Stunden; `0` = aus            |
+| `language`                | `"system"` | `system`, `en`, `de`           | Sprache von Widget, Meldungen und Benachrichtigungen                                    |
+| `default_customers_id`    | `0`        | Kunden-ID, `0` = keine         | Standardbuchung für den Schnellstart (braucht eine Leistung)                            |
+| `default_projects_id`     | `0`        | Projekt-ID, `0` = keines       | Projekt der Standardbuchung                                                             |
+| `default_services_id`     | `0`        | Leistungs-ID, `0` = keine      | Leistung der Standardbuchung (braucht einen Kunden)                                     |
+| `default_text`            | `""`       | bis 1000 Zeichen               | Beschreibung der Standardbuchung                                                        |
+| `panel_style`             | `"ring"`   | `ring`, `stopwatch`, `pill`    | Anzeige in der Leiste: Fortschrittsring, Stoppuhr oder nur farbige Zeit                 |
+| `colorize`                | `true`     | Boolean                        | Zeit in der Leiste grün bei laufender, orange bei gestoppter Uhr                        |
+| `modifier`                | `"ctrl"`   | `ctrl`, `shift`, `alt`, `meta` | Taste für Taste + Linksklick                                                            |
+| `modifier_click`          | `"quick"`  | `quick`, `picker`, `none`      | Taste + Linksklick: Schnellstart/-stopp, Start mit Auswahl öffnen, nichts               |
+| `middle_click`            | `"quick"`  | `quick`, `picker`, `none`      | Mittelklick, gleiche Auswahl                                                            |
+| `overtime_color`          | `true`     | Boolean                        | Rot, wenn die heutige Zeit das Tagessoll überschreitet                                  |
+| `overtime_notify`         | `true`     | Boolean                        | Benachrichtigung mit *Stoppen*-Knopf, wenn das Soll bei laufender Uhr überschritten ist |
+| `overtime_after_minutes`  | `0`        | `0`–`240`                      | Minuten über Soll bis zur ersten Warnung                                                |
+| `overtime_repeat_minutes` | `60`       | `0`–`480`                      | Minuten zwischen den Warnungen; `0` = einmal pro Tag                                    |
 
 Unbekannte Schlüssel werden ignoriert. Eine Datei, die nicht gelesen werden kann oder ungültige Werte enthält, führt zu den Standardwerten (mit einer Warnung im Log).
+
+## Konfigurationsdialog
+
+Rechtsklick auf das Widget → *Clockodo-Zeiterfassung einrichten …*, oder das Zahnradsymbol im Popup. Die Seiten lesen die Einstellungen vom Daemon und speichern sie mit *Anwenden*/*OK*:
+
+| Seite           | Einstellungen                                                                          |
+| --------------- | -------------------------------------------------------------------------------------- |
+| Standardbuchung | Kunde, Projekt, Leistung und Beschreibung für den Schnellstart                         |
+| Bedienung       | Stil in der Leiste, Farben, Taste + Linksklick, Mittelklick                            |
+| Erinnerungen    | Tagessoll (rot, Warnung, Toleranz, Wiederholung), Bildschirmsperre, lange laufende Uhr |
+| Allgemein       | Sprache, Aktualisierungsintervall, Kontakt-E-Mail                                      |
+| Konto           | Clockodo-E-Mail und API-Schlüssel (nach Prüfung mit eigenem Knopf gespeichert)         |
+
+## Schnellstart und Tagessoll
+
+- **Schnellstart/-stopp** (Taste + Linksklick, Mittelklick, Kontextmenü): startet die Standardbuchung oder stoppt die Uhr, die die Leiste anzeigt. Es gelten die üblichen Sicherheitsregeln: Eine anderswo laufende Uhr wird nie ersetzt, und gestoppt wird nur der angezeigte Eintrag. Ohne Standardbuchung öffnet sich die Auswahl. Fehler erscheinen als Benachrichtigung, weil das Popup meist geschlossen ist.
+- **Tagessoll:** einmal pro Tag aus dem Tagesbericht von Clockodo gelesen (`GET /userreports/{id}?type=3`); Feiertage, Abwesenheiten und geänderte Sollstunden sind dort schon berücksichtigt. Ohne Sollstunden oder ohne Recht, den Bericht zu lesen, gibt es keinen Ringfortschritt, kein Rot und keine Warnung.
 
 ## Sprache
 

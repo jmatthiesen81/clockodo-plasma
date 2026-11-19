@@ -50,7 +50,7 @@ sudo pacman -U dist/clockodo-plasma-*-any.pkg.tar.zst
 2. Click the widget. The daemon starts automatically through D-Bus activation.
 3. Enter the Clockodo e-mail and API key and press *Check and save*. The daemon checks them with Clockodo and stores them in KWallet. The key grants the same access as your password.
 4. Choose customer, optionally project, and service, then *Start*.
-5. Optional: open the settings (gear icon) for language, interval, reminders and contact e-mail.
+5. Optional: open the configuration (right-click → *Configure Clockodo Time Tracking…*, or the gear icon) and set a default booking; then Ctrl + left click or a middle click starts and stops the clock directly.
 
 If the popup shows "wallet locked", press *Unlock*. If the Secret Service is not available at all, see [Troubleshooting](troubleshooting.md#secret-service-not-available).
 

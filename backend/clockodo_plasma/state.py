@@ -9,7 +9,7 @@ QML trivial.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -55,6 +55,10 @@ class State:
     poll_interval: int = 60
     account: str | None = None
     language: str = "en"  # effective language for the widget
+    target_seconds: int | None = None  # daily target from Clockodo, None = unknown
+    quick: dict[str, Any] | None = None  # default booking with "label" and "valid"
+    recent: list[dict[str, Any]] = field(default_factory=list)  # with "label"
+    ui: dict[str, Any] = field(default_factory=dict)  # panel and mouse settings
 
     def set_notice(self, text: str | None) -> None:
         self.notice = text
@@ -93,6 +97,10 @@ class State:
             "poll_interval": self.poll_interval,
             "account": self.account,
             "language": self.language,
+            "target_seconds": self.target_seconds,
+            "quick": self.quick,
+            "recent": self.recent,
+            "ui": self.ui,
         }
 
     def to_json(self) -> str:

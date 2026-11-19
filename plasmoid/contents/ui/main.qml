@@ -13,14 +13,17 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.workspace.dbus as DBus
-import "translations.js" as Translations
 
 PlasmoidItem {
     id: root
 
-    readonly property string dbusService: "io.github.jmatthiesen81.ClockodoPlasma"
-    readonly property string dbusPath: "/io/github/jmatthiesen81/ClockodoPlasma"
-    readonly property string dbusInterface: dbusService
+    DaemonClient {
+        id: daemon
+        language: root.daemonState.language || systemLanguage()
+        onReachableChanged: reachable => {
+            root.daemonReachable = reachable;
+        }
+    }
 
     // State published by the daemon (see backend/clockodo_plasma/state.py).
     property var daemonState: ({ "status": "unknown" })
@@ -34,6 +37,17 @@ PlasmoidItem {
     readonly property bool busy: !!daemonState.action_pending
     readonly property bool stale: !daemonReachable || !!daemonState.stale || !hasData
 
+    // Panel and mouse settings (configuration dialog, stored by the daemon).
+    readonly property var ui: daemonState.ui || ({})
+    readonly property string panelStyle: ui.panel_style || "ring"
+
+    // Default booking and recently used contexts, with names.
+    readonly property var quick: daemonState.quick || null
+    readonly property bool quickValid: !!quick && !!quick.valid
+    readonly property var recent: daemonState.recent || []
+    // Recent contexts that make sense as a target now (not the running one).
+    readonly property var recentChoices: recent.filter(ctx => !(running && sameContext(ctx, daemonState.running)))
+
     // Daily total, advanced locally between updates while the clock runs.
     readonly property int todaySeconds: {
         let seconds = daemonState.today_seconds || 0;
@@ -41,6 +55,47 @@ PlasmoidItem {
             seconds += Math.max(0, Math.floor((nowMs - receivedAt) / 1000));
         }
         return seconds;
+    }
+    readonly property int targetSeconds: daemonState.target_seconds || 0
+    readonly property bool overtime: hasData && targetSeconds > 0 && todaySeconds > targetSeconds
+    readonly property real progress: targetSeconds > 0 ? todaySeconds / targetSeconds : -1
+
+    // Colours: running green, stopped orange, over target red (theme colours).
+    readonly property color stateColor: {
+        if (!hasData) {
+            return Kirigami.Theme.disabledTextColor;
+        }
+        if (overtime && ui.overtime_color !== false) {
+            return Kirigami.Theme.negativeTextColor;
+        }
+        return running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.neutralTextColor;
+    }
+    readonly property color panelColor: {
+        if (!hasData) {
+            return Kirigami.Theme.textColor;
+        }
+        if (overtime && ui.overtime_color !== false) {
+            return Kirigami.Theme.negativeTextColor;
+        }
+        return ui.colorize === false ? Kirigami.Theme.textColor : stateColor;
+    }
+
+    // Result of the last action, shown in the popup.
+    property string actionMessage: ""
+    property bool actionOk: true
+    // Incremented to ask the popup for the picker ("start/switch with selection").
+    property int pickerRequest: 0
+
+    function tr(text, arg1, arg2) {
+        return daemon.tr(text, arg1, arg2);
+    }
+
+    function trp(singular, plural, n) {
+        return daemon.trp(singular, plural, n);
+    }
+
+    function call(member, args, onDone, onError) {
+        daemon.call(member, args, onDone, onError);
     }
 
     function formatDuration(seconds) {
@@ -57,32 +112,27 @@ PlasmoidItem {
         return Qt.formatTime(new Date(iso), Qt.locale().timeFormat(Locale.ShortFormat));
     }
 
-    // Language of the widget: chosen in the settings and resolved by the daemon
-    // ("system" -> session language, English if unsupported). Until the daemon
-    // answers, the session language is used.
-    readonly property string language: daemonState.language || systemLanguage()
-
-    function systemLanguage() {
-        const code = Qt.locale().name.split("_")[0];
-        return Translations.catalogs[code] ? code : "en";
-    }
-
-    function tr(text, arg1, arg2) {
-        let args = [];
-        if (arg1 !== undefined) {
-            args.push(arg1);
-        }
-        if (arg2 !== undefined) {
-            args.push(arg2);
-        }
-        return Translations.translate(language, text, args);
-    }
-
-    function trp(singular, plural, n) {
-        return Translations.translatePlural(language, singular, plural, n);
-    }
-
+    readonly property string language: daemon.language
     readonly property string totalText: hasData ? formatDuration(todaySeconds) : "--:--"
+    readonly property string sinceText: running && daemonState.running ? formatTime(daemonState.running.time_since) : ""
+
+    function sameContext(a, b) {
+        if (!a || !b) {
+            return false;
+        }
+        return a.customers_id === b.customers_id
+            && (a.projects_id || 0) === (b.projects_id || 0)
+            && a.services_id === b.services_id;
+    }
+
+    function contextData(ctx, text) {
+        return {
+            "customers_id": ctx.customers_id,
+            "projects_id": ctx.projects_id || null,
+            "services_id": ctx.services_id,
+            "text": (text !== undefined ? text : ctx.text) || null
+        };
+    }
 
     function applyState(json) {
         try {
@@ -93,46 +143,6 @@ PlasmoidItem {
         } catch (e) {
             console.warn("clockodo-plasma: invalid state", e);
         }
-    }
-
-    // Calls a daemon method with string arguments; callbacks get the parsed JSON
-    // result (or the raw string) resp. an error message.
-    //
-    // The Plasma D-Bus module encodes the whole argument list as ONE value of
-    // the given signature, so the in-arguments must be wrapped as a struct:
-    // "(ss)", not "ss". With "ss" only the first type is used, the list is
-    // converted to a single string and the call goes out without arguments
-    // ("... with signature "" could not be found").
-    function call(member, args, onDone, onError) {
-        const stringArgs = (args || []).map(a => new DBus.string(String(a)));
-        DBus.SessionBus.asyncCall({
-            "service": dbusService,
-            "path": dbusPath,
-            "iface": dbusInterface,
-            "member": member,
-            "arguments": stringArgs,
-            "signature": stringArgs.length > 0 ? "(" + "s".repeat(stringArgs.length) + ")" : ""
-        }, reply => {
-            daemonReachable = true;
-            if (onDone) {
-                let value = reply.value;
-                try {
-                    value = JSON.parse(value);
-                } catch (e) {
-                    // plain string result
-                }
-                onDone(value);
-            }
-        }, reply => {
-            const message = reply && reply.error ? reply.error.message : "D-Bus error";
-            console.warn("clockodo-plasma:", member, message);
-            if (member === "GetState") {
-                daemonReachable = false;
-            }
-            if (onError) {
-                onError(message);
-            }
-        });
     }
 
     function fetchState() {
@@ -147,6 +157,76 @@ PlasmoidItem {
         call("Refresh", []);
     }
 
+    // Results of actions started outside the popup open it when they failed,
+    // so the message is not lost.
+    function showResult(result, openOnError) {
+        actionOk = !!(result && result.ok);
+        actionMessage = result && result.message ? result.message : "";
+        if (!actionOk && openOnError) {
+            root.expanded = true;
+        }
+    }
+
+    function showError(message, openOnError) {
+        showResult({ "ok": false, "message": message }, openOnError);
+    }
+
+    // Stop the shown entry, or start the default booking. Without a default
+    // booking the picker opens instead.
+    function quickToggle() {
+        if (!hasData || busy) {
+            return;
+        }
+        const seen = running && daemonState.running ? daemonState.running.entry_id : "";
+        actionMessage = "";
+        call("QuickToggle", [seen], result => {
+            if (result && result.needs_picker) {
+                openPicker();
+            } else {
+                showResult(result, false); // the daemon notifies about failures
+            }
+        }, message => showError(message, true));
+    }
+
+    function openPicker() {
+        pickerRequest += 1;
+        root.expanded = true;
+    }
+
+    function startContext(ctx, text, openOnError) {
+        actionMessage = "";
+        call("Start", [JSON.stringify(contextData(ctx, text))],
+             result => showResult(result, openOnError),
+             message => showError(message, openOnError));
+    }
+
+    function switchTo(ctx, text, openOnError) {
+        if (!running || !daemonState.running) {
+            return;
+        }
+        actionMessage = "";
+        call("Switch", [JSON.stringify(contextData(ctx, text)), daemonState.running.entry_id],
+             result => showResult(result, openOnError),
+             message => showError(message, openOnError));
+    }
+
+    function startOrSwitch(ctx, openOnError) {
+        if (running) {
+            switchTo(ctx, undefined, openOnError);
+        } else {
+            startContext(ctx, undefined, openOnError);
+        }
+    }
+
+    // "quick", "picker" or "none" – configured for modifier + left click and middle click.
+    function runClickAction(action) {
+        if (action === "quick") {
+            quickToggle();
+        } else if (action === "picker") {
+            openPicker();
+        }
+    }
+
     // Starts the daemon via D-Bus activation and requests a fresh sync.
     Component.onCompleted: {
         fetchState();
@@ -154,7 +234,7 @@ PlasmoidItem {
     }
 
     onExpandedChanged: {
-        if (expanded) {
+        if (root.expanded) {
             fetchState();
             refresh();
         }
@@ -162,9 +242,9 @@ PlasmoidItem {
 
     DBus.SignalWatcher {
         busType: DBus.BusType.Session
-        service: root.dbusService
-        path: root.dbusPath
-        iface: root.dbusInterface
+        service: daemon.service
+        path: daemon.path
+        iface: daemon.iface
 
         function dbusStateChanged(json) {
             root.applyState(String(json));
@@ -172,9 +252,8 @@ PlasmoidItem {
     }
 
     DBus.DBusServiceWatcher {
-        id: serviceWatcher
         busType: DBus.BusType.Session
-        watchedService: root.dbusService
+        watchedService: daemon.service
         onRegisteredChanged: {
             if (registered) {
                 root.fetchState();
@@ -200,12 +279,17 @@ PlasmoidItem {
         onTriggered: root.fetchState()
     }
 
-    Plasmoid.icon: running ? "media-playback-pause" : "media-playback-start"
+    Plasmoid.icon: "chronometer"
     Plasmoid.status: running ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
 
-    toolTipMainText: running
-        ? root.tr("Clock running – today %1", totalText)
-        : root.tr("Clock stopped – today %1", totalText)
+    toolTipMainText: {
+        if (overtime) {
+            return root.tr("Over daily target – today %1 of %2", totalText, formatDuration(targetSeconds));
+        }
+        return running
+            ? root.tr("Clock running – today %1", totalText)
+            : root.tr("Clock stopped – today %1", totalText);
+    }
     toolTipSubText: {
         if (!daemonReachable) {
             return root.tr("Background service not reachable");
@@ -227,11 +311,92 @@ PlasmoidItem {
     compactRepresentation: CompactRepresentation {}
     fullRepresentation: FullRepresentation {}
 
-    Plasmoid.contextualActions: [
-        PlasmaCore.Action {
-            text: root.tr("Refresh")
-            icon.name: "view-refresh"
-            onTriggered: root.refresh()
+    // ------------------------------------------------------------ context menu
+
+    PlasmaCore.Action {
+        id: statusAction
+        enabled: false
+        text: {
+            if (!root.hasData) {
+                return root.tr("Clockodo – not connected");
+            }
+            return root.running
+                ? root.tr("Running since %1 · %2 today", root.sinceText, root.totalText)
+                : root.tr("Stopped · %1 today", root.totalText);
         }
-    ]
+    }
+
+    PlasmaCore.Action {
+        id: quickAction
+        enabled: root.hasData && !root.busy
+        icon.name: root.running ? "media-playback-stop" : "media-playback-start"
+        text: {
+            if (root.running) {
+                return root.tr("Stop");
+            }
+            return root.quickValid && root.quick.label
+                ? root.tr("Quick start: %1", root.quick.label)
+                : root.tr("Quick start");
+        }
+        onTriggered: root.quickToggle()
+    }
+
+    PlasmaCore.Action {
+        id: switchDefaultAction
+        visible: root.running && root.quickValid && !root.sameContext(root.quick, root.daemonState.running)
+        enabled: !root.busy
+        icon.name: "exchange-positions"
+        text: root.quickValid && root.quick.label
+            ? root.tr("Switch to default booking: %1", root.quick.label)
+            : ""
+        onTriggered: root.switchTo(root.quick, undefined, true)
+    }
+
+    PlasmaCore.Action {
+        id: pickerAction
+        enabled: root.hasData && !root.busy
+        icon.name: "view-list-details"
+        text: root.running ? root.tr("Switch with selection…") : root.tr("Start with selection…")
+        onTriggered: root.openPicker()
+    }
+
+    PlasmaCore.Action {
+        id: recentSeparator
+        isSeparator: true
+        visible: root.hasData && root.recentChoices.length > 0
+    }
+
+    Instantiator {
+        id: recentActions
+        model: 5
+        delegate: PlasmaCore.Action {
+            required property int index
+            readonly property var context: root.recentChoices[index] || null
+            visible: root.hasData && context !== null
+            enabled: !root.busy
+            icon.name: root.running ? "exchange-positions" : "media-playback-start"
+            text: context ? context.label : ""
+            onTriggered: root.startOrSwitch(context, true)
+        }
+    }
+
+    PlasmaCore.Action {
+        id: refreshSeparator
+        isSeparator: true
+    }
+
+    PlasmaCore.Action {
+        id: refreshAction
+        text: root.tr("Refresh")
+        icon.name: "view-refresh"
+        onTriggered: root.refresh()
+    }
+
+    Plasmoid.contextualActions: {
+        let actions = [statusAction, quickAction, switchDefaultAction, pickerAction, recentSeparator];
+        for (let i = 0; i < recentActions.count; ++i) {
+            actions.push(recentActions.objectAt(i));
+        }
+        return actions.concat([refreshSeparator, refreshAction]);
+    }
 }

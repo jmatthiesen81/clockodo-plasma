@@ -88,6 +88,16 @@ class ClockodoInterface(ServiceInterface):
         return _dumps(await self.service.switch(_loads(context), entry))
 
     @method()
+    async def QuickToggle(self, entry_id: "s") -> "s":  # noqa: F821, UP037
+        """Stop the shown entry (``entry_id``) or, if empty, start the default booking."""
+        if entry_id:
+            try:
+                int(entry_id)
+            except ValueError:
+                return _dumps({"ok": False, "message": "invalid entry id"})
+        return _dumps(await self.service.quick_toggle(entry_id))
+
+    @method()
     async def SetCredentials(self, email: "s", api_key: "s") -> "s":  # noqa: F821, UP037
         return _dumps(await self.service.set_credentials(email, api_key))
 

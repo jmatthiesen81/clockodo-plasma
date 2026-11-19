@@ -65,18 +65,19 @@ The widget keeps a local copy of the state and advances the total every 10 secon
 
 Bus name, interface: `io.github.jmatthiesen81.ClockodoPlasma`; object path: `/io/github/jmatthiesen81/ClockodoPlasma`. All arguments and results are strings; structured data is JSON. This keeps marshalling between Python and QML trivial and avoids int64 precision loss in JavaScript (entry ids are passed as strings).
 
-| Member                                     | Result / purpose                                                                |
-| ------------------------------------------ | ------------------------------------------------------------------------------- |
-| `GetState() → s`                           | Current state as JSON (see below)                                               |
-| `Refresh()`                                | Requests an immediate sync                                                      |
-| `ListContexts() → s`                       | Active customers, projects, services and the recently used contexts             |
-| `Start(s context) → s`                     | `{"ok", "message"}`; context `{customers_id, projects_id?, services_id, text?}` |
-| `Stop(s entry_id) → s`                     | Stops exactly this entry                                                        |
-| `Switch(s context, s entry_id) → s`        | Replaces the running entry `entry_id` with a new context                        |
-| `SetCredentials(s email, s api_key) → s`   | Checks with Clockodo, then stores in the Secret Service                         |
-| `Unlock() → s`                             | Asks the Secret Service to unlock (only on user request)                        |
-| `GetSettings() → s` / `SetSettings(s) → s` | Settings including the list of languages                                        |
-| Signal `StateChanged(s state)`             | Emitted only when the JSON actually changed                                     |
+| Member                                     | Result / purpose                                                                                         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `GetState() → s`                           | Current state as JSON (see below)                                                                        |
+| `Refresh()`                                | Requests an immediate sync                                                                               |
+| `ListContexts() → s`                       | Active customers, projects, services and the recently used contexts                                      |
+| `Start(s context) → s`                     | `{"ok", "message"}`; context `{customers_id, projects_id?, services_id, text?}`                          |
+| `Stop(s entry_id) → s`                     | Stops exactly this entry                                                                                 |
+| `QuickToggle(s entry_id) → s`              | Stops the shown entry or, if `entry_id` is empty, starts the default booking; `needs_picker` without one |
+| `Switch(s context, s entry_id) → s`        | Replaces the running entry `entry_id` with a new context                                                 |
+| `SetCredentials(s email, s api_key) → s`   | Checks with Clockodo, then stores in the Secret Service                                                  |
+| `Unlock() → s`                             | Asks the Secret Service to unlock (only on user request)                                                 |
+| `GetSettings() → s` / `SetSettings(s) → s` | Settings including the list of languages                                                                 |
+| Signal `StateChanged(s state)`             | Emitted only when the JSON actually changed                                                              |
 
 No member returns the API key or raw API responses, and there is no generic HTTP pass-through. `Start` and `Switch` accept only ids from lists the daemon loaded from Clockodo itself. Every process of the user session can call the interface; this is accepted on purpose, because such a process could read the Secret Service anyway.
 
@@ -98,11 +99,11 @@ busctl --user call io.github.jmatthiesen81.ClockodoPlasma /io/github/jmatthiesen
 | `running`       | A clock runs; `running` holds entry id, ids, label and start time                |
 | `stopped`       | No clock runs                                                                    |
 
-Additional fields: `today_seconds`, `computed_at`, `last_sync`, `syncing`, `action_pending` (buttons disabled), `stale`, `error`, `notice` + `notice_id` (one-time information), `timezone`, `timezone_mismatch`, `poll_interval`, `account`, `language`.
+Additional fields: `today_seconds`, `computed_at`, `last_sync`, `syncing`, `action_pending` (buttons disabled), `stale`, `error`, `notice` + `notice_id` (one-time information), `timezone`, `timezone_mismatch`, `poll_interval`, `account`, `language`, `target_seconds` (daily target), `quick` (default booking with `label` and `valid`), `recent` (recently used contexts with labels), `ui` (panel and mouse settings).
 
 ## Synchronisation and time
 
-A sync reads `GET /v4/users/me` once (user id and Clockodo time zone), then `GET /v2/clock` and `GET /v2/workTimes` for today.
+A sync reads `GET /v4/users/me` once (user id and Clockodo time zone), then `GET /v2/clock` and `GET /v2/workTimes` for today, and once per day the daily target from `GET /userreports/{id}` (a failure never fails the sync; retried after 15 minutes, after a 403 the next day).
 
 - **Coalescing:** concurrent callers share one running sync; triggers during a sync lead to one follow-up sync.
 - **Schedule:** the configured interval; after errors an exponential back-off up to 15 minutes, at least `Retry-After` after a 429. Interval 0 switches scheduled polling off; the popup still triggers a sync.
@@ -137,6 +138,7 @@ Checked against the official OpenAPI specification (`https://docs.clockodo.com/o
 | Start / switch      | `POST /v2/clock` with `customers_id`, `services_id`, optional `projects_id`, `text`                                                         |
 | Stop                | `DELETE /v2/clock/{id}`                                                                                                                     |
 | Today's work time   | `GET /v2/workTimes?date_since&date_until&users_id`                                                                                          |
+| Daily target        | `GET /userreports/{id}?year&type=3` (day details, `target` in seconds)                                                                      |
 | Selection lists     | `GET /v3/customers`, `GET /v4/projects`, `GET /v4/services` with `filter[active]=true` (projects also `filter[completed]=false`), paginated |
 
 Every request sends `X-ClockodoApiUser`, `X-ClockodoApiKey` and `X-Clockodo-External-Application: clockodo-plasma;<contact e-mail>`. The contact defaults to the user's Clockodo e-mail. Base URL: `https://my.clockodo.com/api`. Rate limits per user: 900/min, 2,250/15 min, 4,500/h, 20,000/day.

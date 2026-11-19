@@ -1,8 +1,10 @@
 # Clockodo Plasma
 
 Unofficial KDE Plasma 6 panel widget for [Clockodo](https://www.clockodo.com/) time tracking.
-It shows a play/pause symbol and today's work time (`HH:MM`) in the panel; a click opens a
-popup to start, stop or switch the clock with an explicitly chosen customer › project › service.
+It shows today's work time (`HH:MM`) in the panel – green while the clock runs, orange while it is
+stopped, red over the daily target. A click opens a popup to start, stop or switch the clock with
+an explicitly chosen customer › project › service; Ctrl + click, a middle click or the context
+menu start a configurable default booking or stop the clock directly.
 
 Clockodo stays the only source of truth: no local database, no offline bookings, and the
 widget never books anything without a click. Write calls are never retried; before a start

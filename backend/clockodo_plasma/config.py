@@ -24,6 +24,9 @@ log = logging.getLogger(__name__)
 SCHEMA_VERSION = 1
 POLL_INTERVALS = (0, 30, 60, 120, 300)
 MAX_RECENT_CONTEXTS = 5
+PANEL_STYLES = ("ring", "stopwatch", "pill")
+MODIFIERS = ("ctrl", "shift", "alt", "meta")
+CLICK_ACTIONS = ("quick", "picker", "none")  # quick start/stop, open the picker, nothing
 
 
 def config_dir() -> Path:
@@ -45,6 +48,25 @@ class Settings:
     long_running_hours: int = 0  # 0 = off
     language: str = SYSTEM  # "system" or a code from messages.LANGUAGES
 
+    # Default booking for the quick start; 0 = not set.
+    default_customers_id: int = 0
+    default_projects_id: int = 0
+    default_services_id: int = 0
+    default_text: str = ""
+
+    # Panel and mouse.
+    panel_style: str = "ring"
+    colorize: bool = True  # running green, stopped orange, over target red
+    modifier: str = "ctrl"
+    modifier_click: str = "quick"  # action of modifier + left click
+    middle_click: str = "quick"
+
+    # Daily target.
+    overtime_color: bool = True
+    overtime_notify: bool = True
+    overtime_after_minutes: int = 0  # tolerance before the first warning
+    overtime_repeat_minutes: int = 60  # 0 = warn once per day
+
     def validate(self) -> None:
         if self.poll_interval not in POLL_INTERVALS:
             raise ValueError(f"poll_interval must be one of {POLL_INTERVALS}")
@@ -54,6 +76,42 @@ class Settings:
             raise ValueError(f"language must be {SYSTEM!r} or one of {sorted(LANGUAGES)}")
         if self.contact_email and "@" not in self.contact_email:
             raise ValueError("contact_email is not an e-mail address")
+        for name in ("default_customers_id", "default_projects_id", "default_services_id"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must not be negative")
+        if bool(self.default_customers_id) != bool(self.default_services_id):
+            raise ValueError("the default booking needs customer and service")
+        if self.default_projects_id and not self.default_customers_id:
+            raise ValueError("the default project needs a customer")
+        if len(self.default_text) > 1000:
+            raise ValueError("default_text is longer than 1000 characters")
+        if self.panel_style not in PANEL_STYLES:
+            raise ValueError(f"panel_style must be one of {PANEL_STYLES}")
+        if self.modifier not in MODIFIERS:
+            raise ValueError(f"modifier must be one of {MODIFIERS}")
+        for name in ("modifier_click", "middle_click"):
+            if getattr(self, name) not in CLICK_ACTIONS:
+                raise ValueError(f"{name} must be one of {CLICK_ACTIONS}")
+        if not 0 <= self.overtime_after_minutes <= 240:
+            raise ValueError("overtime_after_minutes must be between 0 and 240")
+        if not 0 <= self.overtime_repeat_minutes <= 480:
+            raise ValueError("overtime_repeat_minutes must be between 0 and 480")
+
+    def default_context(self) -> Context | None:
+        """The default booking, or None if none is set."""
+        if not self.default_customers_id or not self.default_services_id:
+            return None
+        return Context(
+            customers_id=self.default_customers_id,
+            services_id=self.default_services_id,
+            projects_id=self.default_projects_id or None,
+            text=self.default_text or None,
+        )
+
+    def ui(self) -> dict[str, Any]:
+        """Settings the widget needs for the panel and the mouse."""
+        keys = ("panel_style", "colorize", "modifier", "modifier_click", "middle_click")
+        return {key: getattr(self, key) for key in keys} | {"overtime_color": self.overtime_color}
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

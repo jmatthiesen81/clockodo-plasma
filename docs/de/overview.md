@@ -12,19 +12,22 @@ Clockodo bietet Desktop-Apps nur für Windows und macOS an. Dieses Projekt bring
 
 Clockodo bleibt die einzige Quelle der Wahrheit. Es gibt keine lokale Datenbank und keine Offline-Buchung; das Widget bucht nie etwas ohne Klick. Das wichtigste Qualitätsziel lautet **keine Fehlbuchungen** (siehe [Architektur – Buchungssicherheit](architecture.md#buchungssicherheit)).
 
-## Funktionen (0.1.0)
+## Funktionen
 
-| Funktion           | Verhalten                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Kontrollleiste     | Play-/Pause-Symbol und heutige Gesamtzeit `HH:MM`; abgeblendet und kursiv, wenn die Daten veraltet sind |
-| Popup              | Status, Gesamtzeit, laufender Kontext, Starten/Stoppen/Wechseln, Aktualisieren, Einstellungen           |
-| Buchungskontext    | Kunde › Projekt (optional) › Leistung, fünf zuletzt verwendete Kontexte, optionale Beschreibung         |
-| Synchronisierung   | Intervall aus/30 s/1/2/5 min (Standard 1 min), sofort beim Öffnen des Popups, Back-off bei Fehlern      |
-| Externe Änderungen | Starts/Stopps auf anderen Geräten werden erkannt und als Hinweis angezeigt                              |
-| Zugangsdaten       | E-Mail und API-Schlüssel im Secret Service (KWallet), vor dem Speichern gegen Clockodo geprüft          |
-| Erinnerungen       | Bildschirm gesperrt, während die Uhr läuft; nach Rückkehr aus dem Ruhezustand; optional nach N Stunden  |
-| Sprachen           | Englisch und Deutsch, in den Einstellungen wählbar (Standard: Systemsprache, sonst Englisch)            |
-| Verteilung         | Arch-Paket (`arch=any`) aus einem eigenen pacman-Repository; GitHub-Releases enthalten den Quellcode    |
+| Funktion            | Verhalten                                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kontrollleiste      | Heutige Gesamtzeit `HH:MM` als Ring (Fortschritt zum Tagessoll), Stoppuhr oder Pille; grün bei laufender, orange bei gestoppter Uhr, rot über Soll; abgeblendet und kursiv, wenn veraltet |
+| Popup               | Status, Gesamtzeit und Soll, laufender Kontext, Schnellstart, Starten/Stoppen/Wechseln, zuletzt verwendete Kontexte                                                                       |
+| Schnellstart/-stopp | Taste + Linksklick (Standard Strg), Mittelklick oder Kontextmenü; startet die Standardbuchung oder stoppt den angezeigten Eintrag                                                         |
+| Kontextmenü         | Schnellstart/-stopp, Start/Wechsel mit Auswahl, Wechsel zur Standardbuchung, zuletzt verwendete Kontexte                                                                                  |
+| Tagessoll           | Aus den Clockodo-Sollstunden; rot und optional eine Warnung mit *Stoppen*-Knopf bei Überschreitung                                                                                        |
+| Buchungskontext     | Kunde › Projekt (optional) › Leistung, fünf zuletzt verwendete Kontexte, optionale Beschreibung                                                                                           |
+| Synchronisierung    | Intervall aus/30 s/1/2/5 min (Standard 1 min), sofort beim Öffnen des Popups, Back-off bei Fehlern                                                                                        |
+| Externe Änderungen  | Starts/Stopps auf anderen Geräten werden erkannt und als Hinweis angezeigt                                                                                                                |
+| Zugangsdaten        | E-Mail und API-Schlüssel im Secret Service (KWallet), vor dem Speichern gegen Clockodo geprüft                                                                                            |
+| Erinnerungen        | Bildschirm gesperrt, während die Uhr läuft; nach Rückkehr aus dem Ruhezustand; optional nach N Stunden                                                                                    |
+| Sprachen            | Englisch und Deutsch, in den Einstellungen wählbar (Standard: Systemsprache, sonst Englisch)                                                                                              |
+| Verteilung          | Arch-Paket (`arch=any`) aus einem eigenen pacman-Repository; GitHub-Releases enthalten den Quellcode                                                                                      |
 
 ## Architektur im Überblick
 

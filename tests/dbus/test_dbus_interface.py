@@ -107,3 +107,21 @@ async def test_invalid_input_is_rejected(buses):
     assert result["ok"] is False
     result = json.loads(await call(bus, "Start", "s", ["{broken"]))
     assert result["ok"] is False
+
+
+async def test_quick_toggle_over_dbus(buses, client):
+    service, bus = buses
+    await service.sync()
+    result = json.loads(await call(bus, "QuickToggle", "s", [""]))
+    assert result == {"ok": False, "message": result["message"], "needs_picker": True}
+
+    changes = {"default_customers_id": 1, "default_services_id": 10}
+    assert json.loads(await call(bus, "SetSettings", "s", [json.dumps(changes)]))["ok"]
+    state = json.loads(await call(bus, "GetState"))
+    assert state["quick"]["label"] == "ACME › Development"
+    assert state["ui"]["panel_style"] == "ring"
+
+    assert json.loads(await call(bus, "QuickToggle", "s", [""]))["ok"]
+    entry_id = json.loads(await call(bus, "GetState"))["running"]["entry_id"]
+    assert json.loads(await call(bus, "QuickToggle", "s", [entry_id]))["ok"]
+    assert json.loads(await call(bus, "QuickToggle", "s", ["nope"]))["ok"] is False
