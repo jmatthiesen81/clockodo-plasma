@@ -12,7 +12,11 @@ PlasmaExtras.Representation {
     Layout.minimumWidth: Kirigami.Units.gridUnit * 20
     Layout.preferredWidth: Kirigami.Units.gridUnit * 24
     Layout.minimumHeight: Kirigami.Units.gridUnit * 16
-    Layout.preferredHeight: content.implicitHeight + Kirigami.Units.largeSpacing * 2
+    // The header is not part of the content and must be added; the views
+    // scroll if they are taller than the cap.
+    Layout.preferredHeight: Math.min(
+        (header ? header.implicitHeight : 0) + content.implicitHeight + Kirigami.Units.largeSpacing * 2,
+        Kirigami.Units.gridUnit * 36)
 
     collapseMarginsHint: true
 
@@ -217,23 +221,36 @@ PlasmaExtras.Representation {
 
         // ---------------------------------------------------------------- views
 
-        Loader {
+        // Views scroll vertically only; their width is bound to the popup so
+        // long texts wrap instead of being cut off on the right.
+        PlasmaComponents3.ScrollView {
+            id: viewScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
-            sourceComponent: {
-                if (full.showSettings) {
-                    return settingsView;
+            implicitHeight: viewLoader.implicitHeight
+            contentWidth: availableWidth
+            contentHeight: viewLoader.implicitHeight
+            QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+
+            Loader {
+                id: viewLoader
+                width: viewScroll.availableWidth
+                height: Math.max(implicitHeight, viewScroll.availableHeight)
+                sourceComponent: {
+                    if (full.showSettings) {
+                        return settingsView;
+                    }
+                    if (full.needsCredentials) {
+                        return credentialsView;
+                    }
+                    if (root.status === "secret_locked") {
+                        return lockedView;
+                    }
+                    if (!root.hasData) {
+                        return loadingView;
+                    }
+                    return trackingView;
                 }
-                if (full.needsCredentials) {
-                    return credentialsView;
-                }
-                if (root.status === "secret_locked") {
-                    return lockedView;
-                }
-                if (!root.hasData) {
-                    return loadingView;
-                }
-                return trackingView;
             }
         }
     }

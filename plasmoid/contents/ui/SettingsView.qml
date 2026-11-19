@@ -67,14 +67,33 @@ ColumnLayout {
             Accessible.name: root.tr("Update interval")
         }
 
-        PlasmaComponents3.CheckBox {
-            id: lockBox
+        // CheckBox texts do not wrap; a separate label does, so the long text
+        // does not widen the popup.
+        RowLayout {
             Kirigami.FormData.label: root.tr("Reminders:")
-            text: root.tr("Notify when the screen is locked while the clock runs")
-            checked: view.settings ? view.settings.notify_on_lock : true
+            Layout.fillWidth: true
+
+            PlasmaComponents3.CheckBox {
+                id: lockBox
+                Layout.alignment: Qt.AlignTop
+                checked: view.settings ? view.settings.notify_on_lock : true
+                Accessible.name: lockLabel.text
+            }
+            PlasmaComponents3.Label {
+                id: lockLabel
+                Layout.fillWidth: true
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 10
+                wrapMode: Text.Wrap
+                text: root.tr("Notify when the screen is locked while the clock runs")
+                TapHandler {
+                    onTapped: lockBox.toggle()
+                }
+            }
         }
 
         RowLayout {
+            Layout.fillWidth: true
+
             PlasmaComponents3.SpinBox {
                 id: longBox
                 from: 0
@@ -83,6 +102,9 @@ ColumnLayout {
                 Accessible.name: root.tr("Remind after hours of running clock")
             }
             PlasmaComponents3.Label {
+                Layout.fillWidth: true
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 8
+                wrapMode: Text.Wrap
                 text: longBox.value === 0
                     ? root.tr("no reminder for long-running clocks")
                     : root.trp("remind after %1 hour", "remind after %1 hours", longBox.value)
@@ -143,6 +165,7 @@ ColumnLayout {
     }
 
     PlasmaComponents3.Button {
+        Layout.maximumWidth: view.width
         visible: !view.showCredentials
         icon.name: "dialog-password"
         text: root.tr("Change Clockodo account or API key…")

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Every widget call with arguments (save credentials, start, stop, switch, save settings) failed with `… with signature "" could not be found`: the Plasma D-Bus module expects the in-arguments as one struct signature (`(ss)`), not `ss`.
+- The popup cut off the settings at the bottom and on the right: the header was not counted in its height, and the long reminder text widened the content. The views now scroll vertically, and long texts wrap.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

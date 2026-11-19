@@ -97,6 +97,12 @@ PlasmoidItem {
 
     // Calls a daemon method with string arguments; callbacks get the parsed JSON
     // result (or the raw string) resp. an error message.
+    //
+    // The Plasma D-Bus module encodes the whole argument list as ONE value of
+    // the given signature, so the in-arguments must be wrapped as a struct:
+    // "(ss)", not "ss". With "ss" only the first type is used, the list is
+    // converted to a single string and the call goes out without arguments
+    // ("... with signature "" could not be found").
     function call(member, args, onDone, onError) {
         const stringArgs = (args || []).map(a => new DBus.string(String(a)));
         DBus.SessionBus.asyncCall({
@@ -105,7 +111,7 @@ PlasmoidItem {
             "iface": dbusInterface,
             "member": member,
             "arguments": stringArgs,
-            "signature": "s".repeat(stringArgs.length)
+            "signature": stringArgs.length > 0 ? "(" + "s".repeat(stringArgs.length) + ")" : ""
         }, reply => {
             daemonReachable = true;
             if (onDone) {
