@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-19
+
 ### Fixed
 
 - Every widget call with arguments (save credentials, start, stop, switch, save settings) failed with `… with signature "" could not be found`: the Plasma D-Bus module expects the in-arguments as one struct signature (`(ss)`), not `ss`.
@@ -30,5 +32,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - CI and release workflows use `actions/setup-python` v7.
 
-[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/jmatthiesen81/clockodo-plasma/releases/tag/0.1.0
