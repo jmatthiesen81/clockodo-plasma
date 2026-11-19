@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=io.github.jmatthiesen81.ClockodoPlasma
+Exec=/usr/bin/clockodo-plasma-daemon
+SystemdService=clockodo-plasma.service

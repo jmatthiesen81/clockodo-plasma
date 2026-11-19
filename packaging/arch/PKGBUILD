@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MPL-2.0
+# Development PKGBUILD: builds the package from this checkout.
+# The release recipe in the pacman repository build project builds from the
+# tagged release tarball instead; both call scripts/install-files.sh.
+#
+# Usage: scripts/build-package.sh (runs makepkg in the Arch container)
+
+pkgname=clockodo-plasma
+pkgver=0.1.0 # set by scripts/release.sh
+pkgrel=1
+pkgdesc="Unofficial KDE Plasma 6 widget for Clockodo time tracking"
+arch=('any')
+url="https://github.com/jmatthiesen81/clockodo-plasma"
+license=('MPL-2.0')
+depends=(
+    'python'
+    'python-httpx'
+    'python-dbus-fast'
+    'python-secretstorage'
+    'plasma-workspace>=6.4'
+    'libplasma'
+    'kirigami'
+    'qt6-declarative'
+)
+optdepends=('kwallet: Secret Service provider for the API key')
+install=clockodo-plasma.install
+
+# Root of the source tree; overridable for builds from a copy.
+_srcroot=${CLOCKODO_PLASMA_SRC:-$startdir/../..}
+
+package() {
+    "$_srcroot/scripts/install-files.sh" "$pkgdir" /usr
+}

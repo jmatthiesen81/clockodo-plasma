@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["[0-9]+.[0-9]+.[0-9]+", "[0-9]+.[0-9]+.[0-9]+-*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ruff + pytest
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dbus
+          python -m pip install -e '.[test]'
+
+      # scripts/test.sh: ruff, version check, pytest incl. D-Bus and translation tests
+      - name: Test
+        env:
+          CLOCKODO_TEST_SYSTEM: "1"
+        run: scripts/test.sh
+
+  package:
+    name: Arch package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # Builds as non-root in the Arch container, then checks metadata, file
+      # list, namcap, test install, daemon start via D-Bus and qmllint.
+      - name: Build and check
+        run: scripts/build-package.sh --check
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch-package
+          path: dist/*.pkg.tar.zst
+          retention-days: 7
+          if-no-files-found: error

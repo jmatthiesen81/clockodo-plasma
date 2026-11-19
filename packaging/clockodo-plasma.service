@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MPL-2.0
+[Unit]
+Description=Clockodo Plasma background service
+Documentation=https://github.com/jmatthiesen81/clockodo-plasma
+PartOf=graphical-session.target
+After=graphical-session.target
+
+# No [Install] section: the service is started on demand via D-Bus activation
+# when the widget talks to it.
+
+[Service]
+Type=dbus
+BusName=io.github.jmatthiesen81.ClockodoPlasma
+ExecStart=/usr/bin/clockodo-plasma-daemon
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes

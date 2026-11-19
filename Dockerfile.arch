@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MPL-2.0
+# Arch Linux environment for tests, package builds and package checks.
+# Pin the base image by digest for reproducible builds, e.g.
+#   docker build --build-arg BASE_IMAGE=archlinux/archlinux:base-devel@sha256:<digest> ...
+ARG BASE_IMAGE=archlinux/archlinux:base-devel
+FROM ${BASE_IMAGE}
+
+# Runtime and test dependencies are preinstalled, so makepkg needs no root
+# rights and the test install of the package has everything it needs.
+RUN pacman -Syu --noconfirm --needed \
+        python python-httpx python-dbus-fast python-secretstorage \
+        python-pytest python-pytest-asyncio python-respx \
+        namcap dbus git \
+        plasma-workspace qt6-declarative \
+    && pacman -Scc --noconfirm
+
+# makepkg never runs as root.
+RUN useradd --create-home --shell /bin/bash builder
+WORKDIR /home/builder

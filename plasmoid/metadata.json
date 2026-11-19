@@ -1,0 +1,21 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Jan Matthiesen"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "Unofficial widget for Clockodo time tracking: start, stop and today's work time",
+        "Description[de]": "Inoffizielles Widget für die Clockodo-Zeiterfassung: Start, Stopp und heutige Arbeitszeit",
+        "Icon": "chronometer",
+        "Id": "io.github.jmatthiesen81.clockodoplasma",
+        "License": "MPL-2.0",
+        "Name": "Clockodo Time Tracking",
+        "Name[de]": "Clockodo-Zeiterfassung",
+        "Version": "0.1.0",
+        "Website": "https://github.com/jmatthiesen81/clockodo-plasma"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

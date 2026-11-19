@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: MPL-2.0
+# Start script of the Clockodo Plasma daemon.
+#
+# The Python code lives in /usr/lib/clockodo-plasma instead of site-packages,
+# so an Arch Python minor update (e.g. 3.13 -> 3.14) does not break the package.
+# -I isolates the interpreter from PYTHONPATH and the user's site-packages.
+exec /usr/bin/python3 -I -c '
+import sys
+sys.path.insert(0, "@LIBDIR@")
+from clockodo_plasma.main import main
+sys.exit(main())
+' "$@"

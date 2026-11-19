@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MPL-2.0
+post_install() {
+    cat <<'EOF'
+==> Add the widget via "Add Widgets…" → "Clockodo Time Tracking".
+    The background service starts automatically when the widget needs it.
+EOF
+}
+
+post_upgrade() {
+    cat <<'EOF'
+==> A running background service keeps the old version until it restarts:
+    systemctl --user restart clockodo-plasma   (or log out and in again)
+    Restart plasmashell (or log out) to load a changed widget.
+EOF
+}
+
+post_remove() {
+    cat <<'EOF'
+==> Personal data is left in place on purpose. To remove it:
+    - remove the widget from the panel
+    - rm -r ~/.config/clockodo-plasma ~/.local/state/clockodo-plasma
+    - delete the "Clockodo API key (clockodo-plasma)" entry in KWallet
+      (KWalletManager, or: secret-tool clear application clockodo-plasma)
+EOF
+}
