@@ -71,6 +71,6 @@ Why two parts: QML has no access to the Secret Service, so a pure QML widget wou
 
 ## Status
 
-Version 0.1.0 is implemented and tested with unit tests, D-Bus tests and a package check in an Arch container. It has not yet been tested in a real Plasma session against a real Clockodo account; see [Findings](findings.md).
+Version 0.2.0 is implemented and tested with unit tests, D-Bus tests, a package check and a run in `plasmoidviewer` in an Arch container. Version 0.1.1 runs in a real Plasma session on CachyOS against a real Clockodo account; the new features of 0.2.0 still need that test. See [Findings](findings.md).
 
 [Index](index.md) · [Deutsch](../de/overview.md)

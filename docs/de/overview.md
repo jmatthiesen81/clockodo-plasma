@@ -71,6 +71,6 @@ Warum zwei Teile: QML hat keinen Zugriff auf den Secret Service, ein reines QML-
 
 ## Status
 
-Version 0.1.0 ist implementiert und mit Unit-Tests, D-Bus-Tests und einer Paketprüfung in einem Arch-Container getestet. Sie wurde noch nicht in einer echten Plasma-Sitzung gegen ein echtes Clockodo-Konto getestet; siehe [Befunde](findings.md).
+Version 0.2.0 ist implementiert und mit Unit-Tests, D-Bus-Tests, einer Paketprüfung und einem Lauf in `plasmoidviewer` in einem Arch-Container getestet. Version 0.1.1 läuft in einer echten Plasma-Sitzung unter CachyOS gegen ein echtes Clockodo-Konto; für die neuen Funktionen von 0.2.0 steht dieser Test noch aus. Siehe [Befunde](findings.md).
 
 [Index](index.md) · [English](../en/overview.md)

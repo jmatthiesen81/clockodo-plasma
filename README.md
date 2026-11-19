@@ -65,6 +65,6 @@ releases are made with `scripts/release.sh X.Y.Z` (tags without `v`), see [Opera
 
 ## Important notes
 
-- Version 0.1.0 has not yet been tested in a real Plasma session against a real Clockodo account ([findings](docs/en/findings.md)).
+- Version 0.1.1 runs on CachyOS against a real Clockodo account; the new features of 0.2.0 have so far only been tested in an Arch container ([findings](docs/en/findings.md)).
 - Not affiliated with Clockodo GmbH; "Clockodo" is used only to describe what the widget works with.
 - Uninstalling leaves your settings, the KWallet entry and the widget in the panel in place; `pacman` prints how to remove them.
