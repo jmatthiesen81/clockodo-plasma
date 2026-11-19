@@ -6,8 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Default booking and quick start/stop:** a default customer › project › service (with optional description) set in the configuration. Key + left click (default Ctrl, configurable), middle click or the context menu start it directly or stop the clock shown in the panel; what each click does is configurable (quick start/stop, open the selection, nothing). Without a default booking the selection opens. A clock running elsewhere is never replaced, and failures are shown as a notification.
+- **Context menu:** status line, quick start/stop, start or switch with selection, switch to the default booking, and the recently used contexts.
+- **Daily target:** read once per day from Clockodo's day report (public holidays and absences included). The ring shows the progress; over the target the time turns red, and an optional notification with a *Stop* button warns (tolerance and repeat interval configurable).
+- **Panel styles:** ring (default), stopwatch or pill; green while running, orange while stopped, red over the target (theme colours, can be switched off).
+- **Configuration dialog** with the pages Default booking, Controls, Reminders, General and Account (right-click → *Configure…* or the gear icon in the popup).
+
 ### Changed
 
+- Redesigned popup: status with coloured total and target, quick start with the default booking, recently used contexts as one-click shortcuts, "Booked on" card with Stop and Switch, and a separate "Start/Switch with selection" view with labels above the fields and "Remember as default booking".
+- The settings moved from the popup to the Plasma configuration dialog.
 - Development is trunk-based on the branch `canon` instead of the version branch `1.0`; releases are tags on `canon` (see docs/en/development.md, "Branches").
 
 ## [0.1.1] - 2026-11-19

@@ -34,11 +34,13 @@ install -Dm644 "$root/packaging/io.github.jmatthiesen81.ClockodoPlasma.service" 
 
 # Plasmoid.
 target="$destdir$prefix/share/plasma/plasmoids/$plasmoid_id"
-install -d "$target/contents/ui"
+install -d "$target/contents/ui" "$target/contents/config"
 install -m644 "$root/plasmoid/metadata.json" "$target/metadata.json"
 # translations.js holds the widget's translations (language chosen in the settings).
 install -m644 "$root"/plasmoid/contents/ui/*.qml "$root"/plasmoid/contents/ui/*.js \
     "$target/contents/ui/"
+# Pages of the configuration dialog.
+install -m644 "$root"/plasmoid/contents/config/*.qml "$target/contents/config/"
 
 # Documentation and license.
 install -Dm644 "$root/README.md" "$destdir$prefix/share/doc/clockodo-plasma/README.md"

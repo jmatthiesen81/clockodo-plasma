@@ -157,6 +157,30 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "Clockodo: clock running for more than {hours} h",
         "de": "Clockodo: Uhr läuft seit über {hours} Std.",
     },
+    "no_default": {
+        "en": "No default booking is set. Please choose customer and service.",
+        "de": "Keine Standardbuchung festgelegt. Bitte Kunde und Leistung auswählen.",
+    },
+    "quick_failed_title": {
+        "en": "Clockodo: action failed",
+        "de": "Clockodo: Aktion fehlgeschlagen",
+    },
+    "overtime_title": {
+        "en": "Clockodo: daily target exceeded",
+        "de": "Clockodo: Tagessoll überschritten",
+    },
+    "overtime_body": {
+        "en": "{total} of {target} – the clock is still running on {label}.",
+        "de": "{total} von {target} – die Uhr läuft noch auf {label}.",
+    },
+    "action_stop": {
+        "en": "Stop",
+        "de": "Stoppen",
+    },
+    "action_continue": {
+        "en": "Keep running",
+        "de": "Weiterlaufen lassen",
+    },
     "reminder_resume_title": {
         "en": "Clockodo: clock kept running during suspend",
         "de": "Clockodo: Uhr lief während des Ruhezustands weiter",

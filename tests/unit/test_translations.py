@@ -11,6 +11,7 @@ from clockodo_plasma import messages
 from clockodo_plasma.config import Settings
 
 UI = Path(__file__).resolve().parents[2] / "plasmoid" / "contents" / "ui"
+CONFIG = UI.parent / "config"
 
 # root.tr("text") / tr("text") and root.trp("singular", "plural", n)
 STRING = r'"((?:[^"\\]|\\.)*)"'
@@ -32,7 +33,7 @@ def catalogs() -> dict[str, dict]:
 def used_strings() -> tuple[set[str], set[str]]:
     singles: set[str] = set()
     plurals: set[str] = set()
-    for qml in UI.glob("*.qml"):
+    for qml in [*UI.glob("*.qml"), *CONFIG.glob("*.qml")]:
         text = qml.read_text(encoding="utf-8")
         singles |= {unescape(m) for m in TR.findall(text)}
         plurals |= {f"{unescape(a)}|{unescape(b)}" for a, b in TRP.findall(text)}

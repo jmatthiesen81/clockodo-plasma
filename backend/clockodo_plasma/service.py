@@ -22,7 +22,7 @@ import asyncio
 import contextlib
 import logging
 import time as _time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -41,15 +41,35 @@ log = logging.getLogger(__name__)
 CONTEXT_MAX_AGE = 600.0  # seconds before customers/projects/services are reloaded
 MAX_BACKOFF = 900.0
 RESUME_NOTICE_SECONDS = 120.0
+TARGET_RETRY_SECONDS = 900.0  # retry interval after the daily target could not be read
+
+ActionCallback = Callable[[str], Awaitable[None]]
 
 
 class Notifier(Protocol):
-    async def notify(self, summary: str, body: str = "") -> None: ...
+    async def notify(
+        self,
+        summary: str,
+        body: str = "",
+        actions: Sequence[tuple[str, str]] = (),
+        on_action: ActionCallback | None = None,
+    ) -> None: ...
 
 
 class NullNotifier:
-    async def notify(self, summary: str, body: str = "") -> None:
+    async def notify(
+        self,
+        summary: str,
+        body: str = "",
+        actions: Sequence[tuple[str, str]] = (),
+        on_action: ActionCallback | None = None,
+    ) -> None:
         log.info("notification: %s", summary)
+
+
+def format_hm(seconds: int) -> str:
+    minutes = max(0, int(seconds)) // 60
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
 ClientFactory = Callable[[str, str, str | None], Any]
@@ -105,6 +125,10 @@ class Service:
         self._retry_after: float | None = None
         self._long_notified_entry: int | None = None
         self._day_requested: date | None = None
+        self._target_day: date | None = None
+        self._target_retry_at = 0.0
+        self._overtime_day: date | None = None
+        self._overtime_last: float | None = None
 
         self._listeners: list[Callable[[State], None]] = []
         self._sync_requests: list[Callable[[], None]] = []
@@ -119,6 +143,7 @@ class Service:
         self._sync_requests.append(callback)
 
     def publish(self) -> None:
+        self._update_choices()
         for callback in self._listeners:
             try:
                 callback(self.state)
@@ -143,6 +168,7 @@ class Service:
         set_language(language)
         self.state.language = language
         self.state.poll_interval = self.settings.poll_interval
+        self.state.ui = self.settings.ui()
 
     async def load_credentials(self) -> bool:
         try:
@@ -275,6 +301,7 @@ class Service:
             self.request_sync()
             return
         self._check_long_running()
+        self._check_overtime()
 
     def minute_update(self) -> None:
         """Recompute the daily total with the local clock and publish it."""
@@ -301,6 +328,52 @@ class Service:
                     t("reminder_lock_body", label=running.label, since=self._fmt(running)),
                 )
             )
+
+    def _check_overtime(self) -> None:
+        """Warn when today's work time exceeds the daily target while the clock runs."""
+        settings = self.settings
+        target = self.state.target_seconds
+        running = self.state.running
+        if (
+            not settings.overtime_notify
+            or not target
+            or running is None
+            or self.state.status != Status.RUNNING
+            or self._day is None
+        ):
+            return
+        total = self.state.today_seconds
+        if total - target < settings.overtime_after_minutes * 60:
+            return
+        now = self.monotonic()
+        if self._overtime_day == self._day:
+            repeat = settings.overtime_repeat_minutes * 60
+            if not repeat or self._overtime_last is None or now - self._overtime_last < repeat:
+                return
+        self._overtime_day = self._day
+        self._overtime_last = now
+        entry_id = running.entry_id
+
+        async def on_action(key: str) -> None:
+            if key != "stop":
+                return
+            result = await self.stop(entry_id)
+            if not result["ok"]:
+                await self.notifier.notify(t("quick_failed_title"), result["message"])
+
+        self._spawn(
+            self.notifier.notify(
+                t("overtime_title"),
+                t(
+                    "overtime_body",
+                    total=format_hm(total),
+                    target=format_hm(target),
+                    label=running.label,
+                ),
+                actions=[("stop", t("action_stop")), ("continue", t("action_continue"))],
+                on_action=on_action,
+            )
+        )
 
     def _fmt(self, running: RunningInfo) -> str:
         return running.time_since.astimezone(self.local_tz()).strftime("%H:%M")
@@ -342,9 +415,13 @@ class Service:
             day = self._today()
             assert self.user is not None
             intervals = await self.client.get_work_intervals(day, self.user.id)
+            if not self.customers:
+                # Names for the default booking and the recent contexts.
+                await self._ensure_contexts_quietly()
             await self._apply_clock(status, external=True)
             self._intervals = intervals
             self._day = day
+            await self._load_target(day)
             self._recompute()
             self.state.last_sync = datetime.now(UTC)
             self.state.stale = False
@@ -371,6 +448,31 @@ class Service:
         finally:
             self.state.syncing = False
             self.publish()
+
+    async def _load_target(self, day: date) -> None:
+        """Read the daily target once per day; it is optional and never fails a sync."""
+        if self._target_day == day or self.user is None:
+            return
+        if self._target_day is not None:
+            self.state.target_seconds = None  # yesterday's target no longer applies
+        if self.monotonic() < self._target_retry_at:
+            return
+        try:
+            target = await self.client.get_day_target(self.user.id, day)
+        except api.AuthError:
+            raise
+        except api.ForbiddenError:
+            log.info("no permission to read the daily target")
+            self._target_day = day  # try again tomorrow
+            self.state.target_seconds = None
+            return
+        except (api.ApiError, api.NetworkError, ValueError, KeyError, TypeError) as exc:
+            log.info("reading the daily target failed: %s", type(exc).__name__)
+            self._target_retry_at = self.monotonic() + TARGET_RETRY_SECONDS
+            return
+        self._target_day = day
+        self._target_retry_at = 0.0
+        self.state.target_seconds = target or None
 
     def _sync_failed(self, message: str, retry_after: float | None = None) -> None:
         self._failures += 1
@@ -452,6 +554,29 @@ class Service:
             await self.ensure_contexts()
         except Exception as exc:  # names are cosmetic; never fail a sync because of them
             log.info("loading booking contexts failed: %s", type(exc).__name__)
+
+    def _update_choices(self) -> None:
+        """Default booking and recent contexts with names, for menu and popup."""
+        loaded = bool(self.customers)
+        default = self.settings.default_context()
+        if default is None:
+            self.state.quick = None
+        else:
+            valid = loaded and self.validate_context(default) is None
+            self.state.quick = {
+                **default.to_dict(),
+                "label": self.label(default) if loaded else None,
+                "valid": valid,
+            }
+        self.state.recent = (
+            [
+                {**c.to_dict(), "label": self.label(c)}
+                for c in self.recent.items
+                if self.validate_context(c) is None
+            ]
+            if loaded
+            else []
+        )
 
     def label(self, context: Context) -> str:
         parts = [self._name(self.customers, context.customers_id)]
@@ -608,6 +733,25 @@ class Service:
             outcome = t("result_stopped")
         return self._result(False, t("outcome_unknown", result=outcome))
 
+    async def quick_toggle(self, seen_entry_id: str) -> dict[str, Any]:
+        """Stop the entry the widget showed, or start the default booking.
+
+        ``seen_entry_id`` is empty if the widget showed a stopped clock. The
+        usual safety rules apply: a clock running elsewhere is never replaced,
+        and stop only stops the entry the user saw. Failures are also shown as
+        a notification because the popup is usually closed.
+        """
+        if seen_entry_id:
+            result = await self.stop(seen_entry_id)
+        else:
+            context = self.settings.default_context()
+            if context is None:
+                return {"ok": False, "message": t("no_default"), "needs_picker": True}
+            result = await self.start(context.to_dict())
+        if not result["ok"]:
+            self._spawn(self.notifier.notify(t("quick_failed_title"), result["message"]))
+        return result
+
     async def stop(self, entry_id: str | int) -> dict[str, Any]:
         if self._action_lock.locked():
             return self._result(False, t("busy"))
@@ -735,6 +879,9 @@ class Service:
             return self._result(False, t("secret_unavailable"))
         self._contexts_loaded_at = None
         self._day = None
+        self._target_day = None
+        self._target_retry_at = 0.0
+        self.state.target_seconds = None
         await self._use_credentials(credentials, user)
         self.publish()
         self.request_sync()
@@ -758,6 +905,7 @@ class Service:
         system = resolve_language(SYSTEM)
         return {
             **self.settings.to_dict(),
+            "language_effective": self.state.language,
             "languages": [{"code": SYSTEM, "name": f"{t('language_system')} ({LANGUAGES[system]})"}]
             + [{"code": code, "name": name} for code, name in LANGUAGES.items()],
         }

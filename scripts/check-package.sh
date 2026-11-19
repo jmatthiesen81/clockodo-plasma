@@ -28,7 +28,8 @@ for required in \
     /usr/share/dbus-1/services/io.github.jmatthiesen81.ClockodoPlasma.service \
     "/usr/share/plasma/plasmoids/$id/metadata.json" \
     "/usr/share/plasma/plasmoids/$id/contents/ui/main.qml" \
-    "/usr/share/plasma/plasmoids/$id/contents/ui/translations.js"; do
+    "/usr/share/plasma/plasmoids/$id/contents/ui/translations.js" \
+    "/usr/share/plasma/plasmoids/$id/contents/config/config.qml"; do
     grep -qx "$required" <<<"$files" || { echo "missing: $required" >&2; exit 1; }
 done
 if grep -q 'site-packages' <<<"$files"; then
@@ -78,7 +79,8 @@ echo "== qmllint"
 qmllint=/usr/lib/qt6/bin/qmllint
 if [ -x "$qmllint" ]; then
     # Unresolved imports of Plasma modules only produce warnings; syntax errors fail.
-    "$qmllint" --max-warnings -1 "/usr/share/plasma/plasmoids/$id/contents/ui/"*.qml || {
+    "$qmllint" --max-warnings -1 "/usr/share/plasma/plasmoids/$id/contents/ui/"*.qml \
+        "/usr/share/plasma/plasmoids/$id/contents/config/"*.qml || {
         echo "qmllint found errors" >&2; exit 1; }
 fi
 

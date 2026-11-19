@@ -264,3 +264,47 @@ async def test_me(client):
     me = await client.get_me()
     assert me.id == 7
     assert me.timezone == "Europe/Berlin"
+
+
+def _day(day: str, target: int | None) -> dict:
+    return {"date": day, "weekday": 4, "nonbusiness": False, "target": target, "target_raw": target}
+
+
+@respx.mock
+async def test_day_target_from_user_report(client):
+    report = {
+        "userreport": {
+            "users_id": 7,
+            "month_details": [
+                {"nr": 10, "week_details": None},
+                {
+                    "nr": 11,
+                    "week_details": [
+                        {"nr": 47, "day_details": [_day("2026-11-18", 28800)]},
+                        {"nr": 47, "day_details": [_day("2026-11-19", 21600)]},
+                    ],
+                },
+            ],
+        }
+    }
+    route = respx.get(f"{BASE}/userreports/7").mock(return_value=httpx.Response(200, json=report))
+    assert await client.get_day_target(7, date(2026, 11, 19)) == 21600
+    params = route.calls.last.request.url.params
+    assert (params["year"], params["type"]) == ("2026", "3")
+    assert await client.get_day_target(7, date(2026, 11, 20)) is None
+
+
+@respx.mock
+async def test_day_target_null_and_forbidden(client):
+    report = {
+        "userreport": {
+            "month_details": [{"week_details": [{"day_details": [_day("2026-11-19", None)]}]}]
+        }
+    }
+    respx.get(f"{BASE}/userreports/7").mock(return_value=httpx.Response(200, json=report))
+    assert await client.get_day_target(7, date(2026, 11, 19)) is None
+    respx.get(f"{BASE}/userreports/8").mock(
+        return_value=httpx.Response(403, json={"error": {"message": "no"}})
+    )
+    with pytest.raises(api.ForbiddenError):
+        await client.get_day_target(8, date(2026, 11, 19))

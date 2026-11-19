@@ -65,18 +65,19 @@ Das Widget hält eine lokale Kopie des Zustands und schreibt die Gesamtzeit alle
 
 Bus-Name, Schnittstelle: `io.github.jmatthiesen81.ClockodoPlasma`; Objektpfad: `/io/github/jmatthiesen81/ClockodoPlasma`. Alle Argumente und Ergebnisse sind Strings; strukturierte Daten sind JSON. Das hält das Marshalling zwischen Python und QML trivial und vermeidet Genauigkeitsverlust bei int64 in JavaScript (Eintrags-IDs werden als Strings übergeben).
 
-| Mitglied                                   | Ergebnis / Zweck                                                                |
-| ------------------------------------------ | ------------------------------------------------------------------------------- |
-| `GetState() → s`                           | Aktueller Zustand als JSON (siehe unten)                                        |
-| `Refresh()`                                | Fordert eine sofortige Synchronisierung an                                      |
-| `ListContexts() → s`                       | Aktive Kunden, Projekte, Leistungen und die zuletzt verwendeten Kontexte        |
-| `Start(s context) → s`                     | `{"ok", "message"}`; Kontext `{customers_id, projects_id?, services_id, text?}` |
-| `Stop(s entry_id) → s`                     | Stoppt genau diesen Eintrag                                                     |
-| `Switch(s context, s entry_id) → s`        | Ersetzt den laufenden Eintrag `entry_id` durch einen neuen Kontext              |
-| `SetCredentials(s email, s api_key) → s`   | Prüft bei Clockodo, speichert dann im Secret Service                            |
-| `Unlock() → s`                             | Bittet den Secret Service um Entsperrung (nur auf Benutzeranfrage)              |
-| `GetSettings() → s` / `SetSettings(s) → s` | Einstellungen einschließlich der Sprachliste                                    |
-| Signal `StateChanged(s state)`             | Wird nur gesendet, wenn sich das JSON tatsächlich geändert hat                  |
+| Mitglied                                   | Ergebnis / Zweck                                                                                               |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `GetState() → s`                           | Aktueller Zustand als JSON (siehe unten)                                                                       |
+| `Refresh()`                                | Fordert eine sofortige Synchronisierung an                                                                     |
+| `ListContexts() → s`                       | Aktive Kunden, Projekte, Leistungen und die zuletzt verwendeten Kontexte                                       |
+| `Start(s context) → s`                     | `{"ok", "message"}`; Kontext `{customers_id, projects_id?, services_id, text?}`                                |
+| `Stop(s entry_id) → s`                     | Stoppt genau diesen Eintrag                                                                                    |
+| `Switch(s context, s entry_id) → s`        | Ersetzt den laufenden Eintrag `entry_id` durch einen neuen Kontext                                             |
+| `QuickToggle(s entry_id) → s`              | Stoppt den angezeigten Eintrag oder startet bei leerer `entry_id` die Standardbuchung; ohne sie `needs_picker` |
+| `SetCredentials(s email, s api_key) → s`   | Prüft bei Clockodo, speichert dann im Secret Service                                                           |
+| `Unlock() → s`                             | Bittet den Secret Service um Entsperrung (nur auf Benutzeranfrage)                                             |
+| `GetSettings() → s` / `SetSettings(s) → s` | Einstellungen einschließlich der Sprachliste                                                                   |
+| Signal `StateChanged(s state)`             | Wird nur gesendet, wenn sich das JSON tatsächlich geändert hat                                                 |
 
 Kein Mitglied gibt den API-Schlüssel oder rohe API-Antworten zurück, und es gibt keinen generischen HTTP-Durchgriff. `Start` und `Switch` akzeptieren nur IDs aus Listen, die der Daemon selbst von Clockodo geladen hat. Jeder Prozess der Benutzersitzung kann die Schnittstelle aufrufen; das wird bewusst akzeptiert, weil ein solcher Prozess ohnehin den Secret Service lesen könnte.
 
@@ -98,11 +99,11 @@ busctl --user call io.github.jmatthiesen81.ClockodoPlasma /io/github/jmatthiesen
 | `running`       | Eine Uhr läuft; `running` enthält Eintrags-ID, IDs, Bezeichnung und Startzeit                          |
 | `stopped`       | Keine Uhr läuft                                                                                        |
 
-Weitere Felder: `today_seconds`, `computed_at`, `last_sync`, `syncing`, `action_pending` (Schaltflächen deaktiviert), `stale`, `error`, `notice` + `notice_id` (einmalige Information), `timezone`, `timezone_mismatch`, `poll_interval`, `account`, `language`.
+Weitere Felder: `today_seconds`, `computed_at`, `last_sync`, `syncing`, `action_pending` (Schaltflächen deaktiviert), `stale`, `error`, `notice` + `notice_id` (einmalige Information), `timezone`, `timezone_mismatch`, `poll_interval`, `account`, `language`, `target_seconds` (Tagessoll), `quick` (Standardbuchung mit `label` und `valid`), `recent` (zuletzt verwendete Kontexte mit Bezeichnung), `ui` (Einstellungen für Leiste und Maus).
 
 ## Synchronisierung und Zeit
 
-Eine Synchronisierung liest einmal `GET /v4/users/me` (Benutzer-ID und Clockodo-Zeitzone), dann `GET /v2/clock` und `GET /v2/workTimes` für heute.
+Eine Synchronisierung liest einmal `GET /v4/users/me` (Benutzer-ID und Clockodo-Zeitzone), dann `GET /v2/clock` und `GET /v2/workTimes` für heute, und einmal pro Tag das Tagessoll aus `GET /userreports/{id}` (ein Fehler lässt die Synchronisierung nie scheitern; neuer Versuch nach 15 Minuten, nach einem 403 am nächsten Tag).
 
 - **Zusammenfassen:** Gleichzeitige Aufrufer teilen sich eine laufende Synchronisierung; Auslöser während einer Synchronisierung führen zu einer Folgesynchronisierung.
 - **Zeitplan:** das konfigurierte Intervall; nach Fehlern ein exponentieller Back-off bis zu 15 Minuten, nach einem 429 mindestens `Retry-After`. Intervall 0 schaltet das geplante Polling aus; das Popup löst weiterhin eine Synchronisierung aus.
@@ -137,6 +138,7 @@ Geprüft gegen die offizielle OpenAPI-Spezifikation (`https://docs.clockodo.com/
 | Starten / Wechseln         | `POST /v2/clock` mit `customers_id`, `services_id`, optional `projects_id`, `text`                                                               |
 | Stoppen                    | `DELETE /v2/clock/{id}`                                                                                                                          |
 | Heutige Arbeitszeit        | `GET /v2/workTimes?date_since&date_until&users_id`                                                                                               |
+| Tagessoll                  | `GET /userreports/{id}?year&type=3` (Tagesdetails, `target` in Sekunden)                                                                         |
 | Auswahllisten              | `GET /v3/customers`, `GET /v4/projects`, `GET /v4/services` mit `filter[active]=true` (Projekte zusätzlich `filter[completed]=false`), paginiert |
 
 Jede Anfrage sendet `X-ClockodoApiUser`, `X-ClockodoApiKey` und `X-Clockodo-External-Application: clockodo-plasma;<Kontakt-E-Mail>`. Der Kontakt ist standardmäßig die Clockodo-E-Mail des Benutzers. Basis-URL: `https://my.clockodo.com/api`. Ratenlimits pro Benutzer: 900/min, 2.250/15 min, 4.500/h, 20.000/Tag.
