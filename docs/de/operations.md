@@ -100,12 +100,13 @@ Schritte in `cachyos-repository`:
 
 Pre-Releases werden nicht im pacman-Repository veröffentlicht (dessen Aufbewahrung sortiert mit `sort --version-sort`, nicht mit `vercmp`).
 
-### Fehlt noch in `cachyos-repository`
+### Rezept in `cachyos-repository`
 
-- `recipes/clockodo-plasma/PKGBUILD`: Quelle = Release-Tarball `clockodo-plasma-X.Y.Z.tar.gz`, `sha256sums`, `package()` ruft `scripts/install-files.sh "$pkgdir" /usr` auf; Abhängigkeiten wie in [packaging/arch/PKGBUILD](../../packaging/arch/PKGBUILD).
-- `recipes/clockodo-plasma/verify.sh`: Sonst ruft die Verifikation jedes `/usr/bin/*` mit `--version` auf und erwartet die Paketversion; ein eigenes Skript sollte zusätzlich Plasmoid-Metadaten, Unit und D-Bus-Service-Datei prüfen und den Daemon unter `dbus-run-session` starten.
-- `scripts/update-recipe.sh`: `clockodo-plasma` in `APPS` aufnehmen, neueste Version über die GitHub-Releases-API ermitteln (wie bei Joplin), Prüfsumme aus `SHA256SUMS` lesen; Token-Header, solange das GitHub-Repository privat ist.
-- Basis-Image in `build.conf` per Digest pinnen.
+- `recipes/clockodo-plasma/PKGBUILD`: Quelle = Release-Tarball `clockodo-plasma-X.Y.Z.tar.gz`, `sha256sums`, `package()` ruft `scripts/install-files.sh "$pkgdir" /usr` auf. Bei jedem Release `depends=()` mit [packaging/arch/PKGBUILD](../../packaging/arch/PKGBUILD) abgleichen.
+- `recipes/clockodo-plasma/clockodo-plasma.install`: Kopie von [packaging/arch/clockodo-plasma.install](../../packaging/arch/clockodo-plasma.install); synchron halten.
+- `recipes/clockodo-plasma/verify.sh`: prüft die installierten Dateien, dass nichts in `site-packages` liegt, die Versionen von Daemon und Plasmoid, die D-Bus-Aktivierung auf einem privaten Session-Bus (`GetState` antwortet `secret_locked`) und `qmllint`.
+- `scripts/update-recipe.sh`: `--check` liest das neueste Release über die GitHub-Releases-API, `update-recipe.sh clockodo-plasma` lädt den Tarball und gleicht seine sha256 mit `SHA256SUMS` des Releases ab.
+- Dort noch offen: Basis-Image in `build.conf` per Digest pinnen.
 
 ### Webserver
 

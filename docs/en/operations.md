@@ -100,12 +100,13 @@ Steps in `cachyos-repository`:
 
 Pre-releases are not published to the pacman repository (its retention sorts with `sort --version-sort`, not `vercmp`).
 
-### Missing in `cachyos-repository`
+### Recipe in `cachyos-repository`
 
-- `recipes/clockodo-plasma/PKGBUILD`: source = release tarball `clockodo-plasma-X.Y.Z.tar.gz`, `sha256sums`, `package()` calls `scripts/install-files.sh "$pkgdir" /usr`; dependencies as in [packaging/arch/PKGBUILD](../../packaging/arch/PKGBUILD).
-- `recipes/clockodo-plasma/verify.sh`: otherwise verification calls every `/usr/bin/*` with `--version` and expects the package version; an own script should also check plasmoid metadata, unit and D-Bus service file and start the daemon under `dbus-run-session`.
-- `scripts/update-recipe.sh`: add `clockodo-plasma` to `APPS`, get the latest version from the GitHub releases API (like Joplin), read the checksum from `SHA256SUMS`; a token header while the GitHub repository is private.
-- Pin the base image in `build.conf` by digest.
+- `recipes/clockodo-plasma/PKGBUILD`: source = release tarball `clockodo-plasma-X.Y.Z.tar.gz`, `sha256sums`, `package()` calls `scripts/install-files.sh "$pkgdir" /usr`. Compare `depends=()` with [packaging/arch/PKGBUILD](../../packaging/arch/PKGBUILD) on every release.
+- `recipes/clockodo-plasma/clockodo-plasma.install`: copy of [packaging/arch/clockodo-plasma.install](../../packaging/arch/clockodo-plasma.install); keep it in sync.
+- `recipes/clockodo-plasma/verify.sh`: checks the installed files, nothing in `site-packages`, the versions of daemon and plasmoid, D-Bus activation on a private session bus (`GetState` answers `secret_locked`) and `qmllint`.
+- `scripts/update-recipe.sh`: `--check` reads the newest release from the GitHub releases API, `update-recipe.sh clockodo-plasma` downloads the tarball and compares its sha256 with `SHA256SUMS` of the release.
+- Still open there: pin the base image in `build.conf` by digest.
 
 ### Web server
 

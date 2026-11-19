@@ -27,20 +27,19 @@ The [release checklist](operations.md#release-checklist) covers these points.
 
 Decided:
 
-- The repository `https://github.com/jmatthiesen81/clockodo-plasma` is private for now and will become public; until then the recipe's version check needs a GitHub token.
+- The repository `https://github.com/jmatthiesen81/clockodo-plasma` is public; release 0.1.0 is published there.
 - The web server for the pacman repository is a Debian server with Plesk (nginx proxy in front of Apache); publishing must run rsync as the subscription's system user (see [Operations – Web server](operations.md#web-server)).
 
-| Point                    | Question                                                                                                                   |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| Recipe                   | `recipes/clockodo-plasma` with `verify.sh` and the `update-recipe.sh` extension in `cachyos-repository` are still missing. |
-| Klockodo                 | Check whether the existing GTK tool already covers the needs.                                                              |
-| Secret Service on target | Active by default, or does `apiEnabled` need to be set?                                                                    |
+| Point                    | Question                                                      |
+| ------------------------ | ------------------------------------------------------------- |
+| Klockodo                 | Check whether the existing GTK tool already covers the needs. |
+| Secret Service on target | Active by default, or does `apiEnabled` need to be set?       |
 
 ## Roadmap
 
 | Version   | Content                                                                                                              |
 | --------- | -------------------------------------------------------------------------------------------------------------------- |
-| 0.1.0     | Implemented: everything described in this documentation; open is the release checklist on CachyOS.                   |
+| 0.1.0     | Released on GitHub (2026-11-19), recipe ready; open: release checklist on CachyOS, then publishing.                  |
 | 1.0.0     | All items of the release checklist fulfilled, accessibility checked in Plasma (keyboard, screen reader).             |
 | After 1.0 | Plasma VM tests with GUI automation, subprojects, OAuth 2.0, absences, build provenance attestation, more languages. |
 
