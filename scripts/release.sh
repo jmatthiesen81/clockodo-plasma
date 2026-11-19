@@ -45,11 +45,15 @@ git rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository"
 [ -z "$(git status --porcelain)" ] || die "the working tree has uncommitted changes; commit or stash them first"
 ! git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null || die "tag $VERSION already exists"
 
+# Releases are tags on the trunk branch "canon". A maintenance branch named
+# after the release line (e.g. "0.1", created from a tag only when an old line
+# needs a fix) may release versions of that line.
+TRUNK=canon
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 MINOR=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
-case $BRANCH in
-    [0-9]*.[0-9]*) [ "$BRANCH" = "$MINOR" ] || echo "release: note: releasing $VERSION from branch $BRANCH" >&2 ;;
-esac
+if [ "$BRANCH" != "$TRUNK" ] && [ "$BRANCH" != "$MINOR" ]; then
+    echo "release: note: releasing $VERSION from branch $BRANCH, not from $TRUNK" >&2
+fi
 
 has_section() { grep -Eq "^## \[$(echo "$1" | sed 's/[.]/\\./g')\]" "$CHANGELOG"; }
 

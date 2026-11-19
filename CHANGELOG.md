@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Development is trunk-based on the branch `canon` instead of the version branch `1.0`; releases are tags on `canon` (see docs/en/development.md, "Branches").
+
 ## [0.1.1] - 2026-11-19
 
 ### Fixed

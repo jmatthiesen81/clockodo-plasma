@@ -48,7 +48,7 @@ Releases follow Semantic Versioning; tags have no `v` prefix. Changes are collec
 ```bash
 scripts/release.sh 0.1.0 --dry-run   # preview
 scripts/release.sh 0.1.0             # set versions, date the changelog, commit, tag
-git push origin <branch>
+git push origin canon
 git push origin 0.1.0
 ```
 

@@ -48,7 +48,7 @@ Releases folgen Semantic Versioning; Tags haben kein Präfix `v`. Änderungen we
 ```bash
 scripts/release.sh 0.1.0 --dry-run   # Vorschau
 scripts/release.sh 0.1.0             # Versionen setzen, Changelog datieren, committen, taggen
-git push origin <branch>
+git push origin canon
 git push origin 0.1.0
 ```
 

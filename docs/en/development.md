@@ -57,6 +57,23 @@ To add a language:
 
 `test_translations.py` fails while a text is missing, a catalog entry is unused or placeholders differ. Both catalogs currently assume the plural rule "one for n = 1, other otherwise".
 
+## Branches
+
+The project works trunk-based with one long-lived branch, **`canon`** (the default branch):
+
+- Feature branches (`feat/<topic>`, `fix/<topic>`, `chore/<topic>`, …) branch off `canon` and are merged back into it.
+- Releases are only tags on `canon` (`0.2.0`, `0.2.1`, …, no `v` prefix); no branch is created for a release.
+- An old release line is only maintained when actually needed: the branch is created from the tag (`git switch -c 0.1 0.1.1`), the fix is committed and tagged there (`0.1.2`). `release.sh` accepts such a branch for versions of its line and notes any other branch.
+
+The name follows the metaphor of the office-attendance-bot (ADR 0004): feature branches are ideas that are not official yet, merging makes them canon, and a release tag is a published edition of the canon. Until 0.1.1 the project used a version branch `1.0`; an existing clone switches once with:
+
+```bash
+git branch -m 1.0 canon
+git fetch origin --prune
+git branch -u origin/canon canon
+git remote set-head origin -a
+```
+
 ## Conventions
 
 - Version numbers are set only by `scripts/release.sh`; `check-version.sh` verifies them in tests and in the release workflow.

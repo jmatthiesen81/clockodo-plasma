@@ -57,6 +57,23 @@ Eine Sprache hinzufügen:
 
 `test_translations.py` schlägt fehl, solange ein Text fehlt, ein Katalogeintrag ungenutzt ist oder Platzhalter abweichen. Beide Kataloge setzen derzeit die Pluralregel „one für n = 1, sonst other“ voraus.
 
+## Branches
+
+Das Projekt arbeitet trunk-basiert mit einem einzigen dauerhaften Branch, **`canon`** (der Standard-Branch):
+
+- Feature-Branches (`feat/<thema>`, `fix/<thema>`, `chore/<thema>`, …) zweigen von `canon` ab und werden dorthin zurückgeführt.
+- Releases sind nur Tags auf `canon` (`0.2.0`, `0.2.1`, …, ohne Präfix `v`); für ein Release entsteht kein Branch.
+- Eine alte Release-Linie wird nur gepflegt, wenn es wirklich nötig ist: Der Branch entsteht aus dem Tag (`git switch -c 0.1 0.1.1`), der Fix wird dort committet und getaggt (`0.1.2`). `release.sh` akzeptiert einen solchen Branch für Versionen seiner Linie und weist bei jedem anderen Branch darauf hin.
+
+Der Name folgt der Metapher aus dem office-attendance-bot (ADR 0004): Feature-Branches sind Ideen, die noch nicht offiziell sind, das Mergen macht sie zum Kanon, und ein Release-Tag ist eine veröffentlichte Ausgabe des Kanons. Bis 0.1.1 nutzte das Projekt einen Versions-Branch `1.0`; ein bestehender Klon stellt einmalig so um:
+
+```bash
+git branch -m 1.0 canon
+git fetch origin --prune
+git branch -u origin/canon canon
+git remote set-head origin -a
+```
+
 ## Konventionen
 
 - Versionsnummern werden nur von `scripts/release.sh` gesetzt; `check-version.sh` prüft sie in den Tests und im Release-Workflow.
