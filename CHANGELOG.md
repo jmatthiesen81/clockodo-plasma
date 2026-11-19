@@ -19,4 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Licensed under the Mozilla Public License 2.0.
 - Arch Linux package (`arch=any`) with the Python code outside `site-packages`, so Python minor updates do not break it.
 
+### Changed
+
+- CI and release workflows use `actions/setup-python` v7.
+
 [Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/commits/HEAD
