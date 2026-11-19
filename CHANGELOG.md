@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-19
+
 ### Added
 
 - **Panel widget for KDE Plasma 6.4+:** play/pause symbol and today's work time (`HH:MM`); a click opens the popup and synchronises with Clockodo right away.
@@ -23,4 +25,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - CI and release workflows use `actions/setup-python` v7.
 
-[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/commits/HEAD
+[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/jmatthiesen81/clockodo-plasma/releases/tag/0.1.0
