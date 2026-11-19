@@ -13,7 +13,7 @@
         "License": "MPL-2.0",
         "Name": "Clockodo Time Tracking",
         "Name[de]": "Clockodo-Zeiterfassung",
-        "Version": "0.1.1",
+        "Version": "0.2.0",
         "Website": "https://github.com/jmatthiesen81/clockodo-plasma"
     },
     "KPackageStructure": "Plasma/Applet",

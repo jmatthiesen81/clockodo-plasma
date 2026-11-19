@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-19
+
 ### Added
 
 - **Default booking and quick start/stop:** a default customer › project › service (with optional description) set in the configuration. Key + left click (default Ctrl, configurable), middle click or the context menu start it directly or stop the clock shown in the panel; what each click does is configurable (quick start/stop, open the selection, nothing). Without a default booking the selection opens. A clock running elsewhere is never replaced, and failures are shown as a notification.
@@ -46,6 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - CI and release workflows use `actions/setup-python` v7.
 
-[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/jmatthiesen81/clockodo-plasma/releases/tag/0.1.0
