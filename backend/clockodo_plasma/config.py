@@ -123,7 +123,7 @@ class Settings:
                 continue
             default = data[key]
             if isinstance(default, bool):
-                data[key] = bool(value)
+                data[key] = _parse_bool(key, value)
             elif isinstance(default, int):
                 data[key] = int(value)
             else:
@@ -131,6 +131,21 @@ class Settings:
         result = Settings(**data)
         result.validate()
         return result
+
+
+def _parse_bool(key: str, value: Any) -> bool:
+    """Strict bool: ``bool("false")`` would be True, so strings are parsed."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in ("true", "1"):
+            return True
+        if text in ("false", "0"):
+            return False
+    raise ValueError(f"{key} must be true or false")
 
 
 def _migrate(data: dict[str, Any]) -> dict[str, Any]:

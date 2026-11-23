@@ -11,14 +11,19 @@ permissions:
 
 jobs:
   test:
-    name: ruff + pytest
+    name: ruff + pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest supported version (pyproject.toml) and the current Arch version.
+        python-version: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install
         run: |

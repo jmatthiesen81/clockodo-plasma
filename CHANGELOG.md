@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Saving new credentials deleted the stored API key before writing the new one; if writing failed, the old credentials were lost. The new item is now stored first and older items are removed afterwards.
+- Boolean settings sent as strings were read with `bool()`, so `"false"` became `true`. They are now parsed strictly, and invalid values are rejected.
+
+### Changed
+
+- CI runs the tests on Python 3.12 (oldest supported version) as well as 3.14.
+
 ## [0.2.0] - 2026-11-19
 
 ### Added

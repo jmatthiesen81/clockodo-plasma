@@ -93,14 +93,17 @@ def _store_sync(credentials: Credentials) -> None:
         if collection.is_locked():
             raise SecretLocked("collection is locked")
         try:
-            for item in list(collection.search_items(ATTRIBUTES)):
-                item.delete()
-            collection.create_item(
+            # Store the new item first and only then remove older ones (e.g. a
+            # different account): if storing fails, the old credentials stay.
+            created = collection.create_item(
                 LABEL,
                 {**ATTRIBUTES, "account": credentials.email},
                 credentials.api_key.encode("utf-8"),
                 replace=True,
             )
+            for item in list(collection.search_items(ATTRIBUTES)):
+                if item != created:
+                    item.delete()
         except LockedException as exc:
             raise SecretLocked(str(exc)) from None
     finally:

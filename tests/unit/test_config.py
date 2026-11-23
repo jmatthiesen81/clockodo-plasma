@@ -27,6 +27,17 @@ def test_invalid_settings_rejected():
         Settings().updated({"contact_email": "nope"})
 
 
+def test_bool_settings_are_parsed_strictly():
+    assert Settings().updated({"colorize": False}).colorize is False
+    assert Settings().updated({"colorize": "false"}).colorize is False
+    assert Settings().updated({"colorize": "True"}).colorize is True
+    assert Settings().updated({"colorize": 0}).colorize is False
+    with pytest.raises(ValueError):
+        Settings().updated({"colorize": "maybe"})
+    with pytest.raises(ValueError):
+        Settings().updated({"colorize": 2})
+
+
 def test_broken_file_falls_back_to_defaults(tmp_path):
     store = ConfigStore(tmp_path / "c", tmp_path / "s")
     store.config_path.parent.mkdir(parents=True)
