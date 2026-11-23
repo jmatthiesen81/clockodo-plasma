@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-23
+
 ### Fixed
 
 - Saving new credentials deleted the stored API key before writing the new one; if writing failed, the old credentials were lost. The new item is now stored first and older items are removed afterwards.
@@ -58,7 +60,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - CI and release workflows use `actions/setup-python` v7.
 
-[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/jmatthiesen81/clockodo-plasma/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/jmatthiesen81/clockodo-plasma/releases/tag/0.1.0

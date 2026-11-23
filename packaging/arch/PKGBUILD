@@ -6,7 +6,7 @@
 # Usage: scripts/build-package.sh (runs makepkg in the Arch container)
 
 pkgname=clockodo-plasma
-pkgver=0.2.0 # set by scripts/release.sh
+pkgver=0.2.1 # set by scripts/release.sh
 pkgrel=1
 pkgdesc="Unofficial KDE Plasma 6 widget for Clockodo time tracking"
 arch=('any')

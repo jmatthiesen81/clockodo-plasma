@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Background daemon of the Clockodo Plasma widget."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 APP_ID = "clockodo-plasma"
 DBUS_NAME = "io.github.jmatthiesen81.ClockodoPlasma"
