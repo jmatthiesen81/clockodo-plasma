@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - CI runs the tests on Python 3.12 (oldest supported version) as well as 3.14.
+- GitHub Actions are pinned to commit SHAs instead of movable version tags.
 
 ## [0.2.0] - 2026-11-19
 

@@ -20,7 +20,7 @@ The [release checklist](operations.md#release-checklist) covers these points.
 - **API key scope:** a Clockodo API key has the full rights of the user. It is stored only in the Secret Service and never logged.
 - **Firm-specific required fields:** Clockodo settings may require a project or a description on start. The widget shows Clockodo's error message, but cannot know these rules beforehand (unknown).
 - **Subprojects** are not supported; contexts with a subproject are filtered out of the recent list.
-- **Unpinned build inputs:** `Dockerfile.arch` uses `archlinux/archlinux:base-devel` without a digest, and the workflows use actions by major tag (`@v7`, `@v6`), while the plan recommends pinning by digest/commit SHA.
+- **Build inputs:** The GitHub Actions are pinned to commit SHAs (with a version comment; Dependabot keeps them up to date). `Dockerfile.arch` uses `archlinux/archlinux:base-devel` without a digest on purpose: the image runs `pacman -Syu` right away and fetches the current packages anyway, so a digest would hardly make the build more reproducible. The image is only used for building and checking and does not end up in the package.
 - **qmllint warnings:** the QML files access `root` (from `main.qml` or the configuration page) unqualified. This is common in plasmoids and works at runtime, but qmllint cannot check these bindings. It also missed a wrong property name (`separator` instead of `isSeparator`) that stopped the widget from loading; only a run in `plasmoidviewer` found it, so a runtime check belongs in every release check.
 - **D-Bus module quirks:** in 0.1.0 every call with arguments failed because the module expects the argument signature as one struct (`(ss)`, not `ss`); this is not documented and could change again.
 
